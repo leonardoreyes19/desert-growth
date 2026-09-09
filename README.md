@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Desert Growth
 
-## Getting Started
+Dashboard de crecimiento y ventas construido sobre datos de **GoHighLevel (GHL)**. Muestra en vivo la adquisición de leads, el pipeline de ventas y la velocidad de respuesta del equipo, y además envía un **reporte semanal por correo** con el mismo resumen.
 
-First, run the development server:
+## Qué hace
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Dashboard en vivo** (`/`): trae contactos, oportunidades, pipelines y conversaciones de GHL vía su API y calcula métricas de negocio a partir de ellos:
+  - leads de la semana vs. la anterior, tasa de cierre, mediana de tiempo a primer contacto
+  - leads por fuente/campaña, por ciudad, y su evolución diaria (últimos 30 días)
+  - oportunidades por etapa y por línea de producto, y leads "estancados" (sin mover de etapa en 14+ días)
+  - % de leads respondidos en <5 min, <1 hora, y sin respuesta después de 24 horas
+- **Reporte semanal por email** (`app/api/cron/weekly-report`): un cron job protegido por token que recalcula las mismas métricas y envía un correo (vía [Resend](https://resend.com) + [React Email](https://react.email)) a la lista de destinatarios configurada. Programado en `vercel.json` para correr cada lunes.
+- **Herramientas de export** (`scripts/export-email.mjs`): renderiza la plantilla de email a HTML estático para revisarla sin desplegar ni enviar nada.
+
+## Stack
+
+- [Next.js](https://nextjs.org) (App Router) + React + TypeScript
+- Tailwind CSS
+- [GoHighLevel API](https://highlevel.stoplight.io/) como fuente de datos (CRM/pipeline)
+- [Resend](https://resend.com) + [React Email](https://react.email) para el envío del reporte
+- Desplegado en [Vercel](https://vercel.com), con el reporte semanal como Vercel Cron Job
+
+## Estructura
+
+```
+app/
+  page.tsx                     dashboard principal
+  api/cron/weekly-report/      endpoint del cron que envía el reporte semanal
+components/                    piezas de UI del dashboard (stat tiles, charts, labels)
+lib/
+  ghl.ts                       cliente/consultas a la API de GoHighLevel
+  metrics.ts                   cálculo de métricas a partir de datos crudos de GHL
+emails/
+  weekly-report.tsx            plantilla del correo semanal (React Email)
+scripts/
+  export-email.mjs             exporta la plantilla de email a HTML para previsualizarla
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Desarrollo local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Abre [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+Para previsualizar las plantillas de email con el editor visual de React Email:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run email
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Variables de entorno
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copia estas claves a un `.env.local` (no se sube al repo):
 
-## Deploy on Vercel
+| Variable | Descripción |
+| --- | --- |
+| `GHL_PRIVATE_INTEGRATION_TOKEN` | Token de integración privada de GoHighLevel |
+| `GHL_LOCATION_ID` | ID de la location/subcuenta de GHL a consultar |
+| `REPORT_COMPANY_NAME` | Nombre mostrado en el dashboard y el asunto del correo (soporta `"Partner/Empresa"` para mostrar una alianza) |
+| `RESEND_API_KEY` | API key de Resend para enviar el reporte semanal |
+| `REPORT_RECIPIENTS` | Destinatarios del reporte, separados por coma |
+| `REPORT_FROM_EMAIL` | Remitente del correo |
+| `REPORT_DASHBOARD_URL` | URL del dashboard que se enlaza dentro del correo |
+| `CRON_SECRET` | Token requerido (`Authorization: Bearer <token>`) para invocar el cron de reporte semanal |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Pensado para desplegarse en Vercel. El cron semanal está declarado en `vercel.json` (lunes 15:00 UTC) y llama a `/api/cron/weekly-report`, que valida `CRON_SECRET` antes de generar y enviar el correo.
