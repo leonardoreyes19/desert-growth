@@ -9,11 +9,13 @@ export function BarChart({
   data,
   formatValue = (n: number) => n.toLocaleString("es-MX"),
   valueSuffix,
+  labels = { viewTable: "Ver tabla", viewChart: "Ver gráfica", category: "Categoría", value: "Valor" },
 }: {
   title: string;
   data: BarDatum[];
   formatValue?: (n: number) => string;
   valueSuffix?: string;
+  labels?: { viewTable: string; viewChart: string; category: string; value: string };
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -36,7 +38,7 @@ export function BarChart({
           aria-expanded={showTable}
           aria-controls={tableId}
         >
-          {showTable ? "Ver gráfica" : "Ver tabla"}
+          {showTable ? labels.viewChart : labels.viewTable}
         </button>
       </div>
 
@@ -44,8 +46,8 @@ export function BarChart({
         <table id={tableId} className="w-full text-sm">
           <thead>
             <tr style={{ color: "var(--text-secondary)" }}>
-              <th className="text-left font-normal pb-2">Categoría</th>
-              <th className="text-right font-normal pb-2">Valor</th>
+              <th className="text-left font-normal pb-2">{labels.category}</th>
+              <th className="text-right font-normal pb-2">{labels.value}</th>
             </tr>
           </thead>
           <tbody>

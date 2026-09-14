@@ -10,7 +10,17 @@ const PAD_LEFT = 32;
 const PAD_BOTTOM = 24;
 const PAD_TOP = 12;
 
-export function LineChart({ title, data }: { title: string; data: LineDatum[] }) {
+export function LineChart({
+  title,
+  data,
+  locale = "es-MX",
+  hoverLabelPrefix = "leads el",
+}: {
+  title: string;
+  data: LineDatum[];
+  locale?: string;
+  hoverLabelPrefix?: string;
+}) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const max = Math.max(1, ...data.map((d) => d.value));
@@ -81,7 +91,7 @@ export function LineChart({ title, data }: { title: string; data: LineDatum[] })
             fill="var(--text-muted)"
             textAnchor={p.x < PAD_LEFT + 20 ? "start" : p.x > WIDTH - 20 ? "end" : "middle"}
           >
-            {new Date(p.date + "T00:00:00Z").toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" })}
+            {new Date(p.date + "T00:00:00Z").toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" })}
           </text>
         ))}
 
@@ -111,7 +121,7 @@ export function LineChart({ title, data }: { title: string; data: LineDatum[] })
       </svg>
       {hovered && (
         <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-          <strong style={{ color: "var(--text-primary)" }}>{hovered.value}</strong> leads el {hovered.date}
+          <strong style={{ color: "var(--text-primary)" }}>{hovered.value}</strong> {hoverLabelPrefix} {hovered.date}
         </div>
       )}
     </div>

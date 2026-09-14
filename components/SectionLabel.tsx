@@ -1,10 +1,10 @@
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2
-      className="text-xs font-semibold uppercase tracking-wide mb-3"
-      style={{ color: "var(--text-muted)" }}
+    <h3
+      className="text-base sm:text-lg font-semibold mb-3"
+      style={{ color: "var(--text-primary)" }}
     >
       {children}
-    </h2>
+    </h3>
   );
 }

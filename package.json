@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "next": "16.3.4",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-email": "^6.9.5",
