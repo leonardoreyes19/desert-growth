@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { ToggleGroup } from "radix-ui";
 import * as SwitchPrimitive from "radix-ui/switch";
 import { formatMinutes } from "@/lib/metrics";
@@ -40,6 +41,8 @@ export type DashboardProps = {
   byPipeline: SourceCount[];
   stalled: StalledSummary;
   meta: MetaInsights;
+  availableTags: string[];
+  selectedTag: string | null;
   initialLang: Lang;
   initialTheme: Theme;
 };
@@ -96,6 +99,57 @@ function LangSwitch({ lang, onChange, label }: { lang: Lang; onChange: (l: Lang)
           }}
         >
           {code}
+        </ToggleGroup.Item>
+      ))}
+    </ToggleGroup.Root>
+  );
+}
+
+function TagFilter({
+  tags,
+  selected,
+  onChange,
+  label,
+  allLabel,
+}: {
+  tags: string[];
+  selected: string | null;
+  onChange: (tag: string | null) => void;
+  label: string;
+  allLabel: string;
+}) {
+  if (tags.length === 0) return null;
+  return (
+    <ToggleGroup.Root
+      type="single"
+      value={selected ?? "__all__"}
+      onValueChange={(next) => next && onChange(next === "__all__" ? null : next)}
+      aria-label={label}
+      className="inline-flex flex-wrap gap-1.5"
+    >
+      <ToggleGroup.Item
+        value="__all__"
+        className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors outline-none cursor-pointer"
+        style={{
+          color: selected === null ? "#ffffff" : "var(--text-secondary)",
+          background: selected === null ? "var(--series-1)" : "var(--surface-1)",
+          border: "1px solid var(--border-hairline)",
+        }}
+      >
+        {allLabel}
+      </ToggleGroup.Item>
+      {tags.map((tag) => (
+        <ToggleGroup.Item
+          key={tag}
+          value={tag}
+          className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors outline-none cursor-pointer"
+          style={{
+            color: selected === tag ? "#ffffff" : "var(--text-secondary)",
+            background: selected === tag ? "var(--series-1)" : "var(--surface-1)",
+            border: "1px solid var(--border-hairline)",
+          }}
+        >
+          {tag}
         </ToggleGroup.Item>
       ))}
     </ToggleGroup.Root>
@@ -287,16 +341,25 @@ export function Dashboard(props: DashboardProps) {
     byPipeline,
     stalled,
     meta,
+    availableTags,
+    selectedTag,
     initialLang,
     initialTheme,
   } = props;
 
   const [lang, setLang] = useState<Lang>(initialLang);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const t = getDict(lang);
   const locale = localeFor(lang);
   const metaOk = meta.configured && meta.error === undefined ? meta : null;
+
+  function changeTag(tag: string | null) {
+    const query = tag ? `?tag=${encodeURIComponent(tag)}` : "";
+    router.push(`${pathname}${query}`);
+  }
 
   function changeLang(next: Lang) {
     setLang(next);
@@ -367,6 +430,9 @@ export function Dashboard(props: DashboardProps) {
         </header>
 
         <SourceGroup title={t.crmGroupTitle} subtitle={t.crmGroupSubtitle} accent="var(--series-1)">
+        {availableTags.length > 0 && (
+          <TagFilter tags={availableTags} selected={selectedTag} onChange={changeTag} label={t.tagFilterLabel} allLabel={t.allLeads} />
+        )}
         <section>
           <SectionLabel>{t.summary}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

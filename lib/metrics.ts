@@ -29,6 +29,26 @@ function toTitleCase(s: string): string {
     .join(" ");
 }
 
+export function distinctTags(contacts: GhlContact[], maxSlots = 8): string[] {
+  const counts = new Map<string, number>();
+  for (const c of contacts) {
+    for (const rawTag of c.tags ?? []) {
+      const tag = rawTag.trim();
+      if (!tag) continue;
+      counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxSlots)
+    .map(([tag]) => tag);
+}
+
+export function filterContactsByTag(contacts: GhlContact[], tag: string): GhlContact[] {
+  const target = tag.trim().toLowerCase();
+  return contacts.filter((c) => (c.tags ?? []).some((t) => t.trim().toLowerCase() === target));
+}
+
 export function leadsByCity(contacts: GhlContact[], maxSlots = 8): SourceCount[] {
   const counts = new Map<string, number>();
   for (const c of contacts) {

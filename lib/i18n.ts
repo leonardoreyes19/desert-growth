@@ -90,6 +90,9 @@ type Dict = {
   crmGroupSubtitle: string;
   metaGroupTitle: string;
   metaGroupSubtitle: string;
+
+  tagFilterLabel: string;
+  allLeads: string;
 };
 
 export const dictionaries: Record<Lang, Dict> = {
@@ -177,6 +180,9 @@ export const dictionaries: Record<Lang, Dict> = {
     crmGroupSubtitle: "Leads y oportunidades ya registrados en el CRM del equipo de ventas",
     metaGroupTitle: "Datos de Meta Ads",
     metaGroupSubtitle: "Lo que Meta reporta de tus campañas pagadas — puede no coincidir 1:1 con el CRM",
+
+    tagFilterLabel: "Filtrar por etiqueta",
+    allLeads: "Todos",
   },
   en: {
     liveData: "Live data",
@@ -262,6 +268,9 @@ export const dictionaries: Record<Lang, Dict> = {
     crmGroupSubtitle: "Leads and opportunities already tracked in the sales team's CRM",
     metaGroupTitle: "Meta Ads data",
     metaGroupSubtitle: "What Meta reports for your paid campaigns — may not match the CRM 1:1",
+
+    tagFilterLabel: "Filter by tag",
+    allLeads: "All",
   },
 };
 

@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { getAllContacts, getAllConversations, getAllOpportunities, getPipelines } from "@/lib/ghl";
 import {
   conversionSummary,
+  distinctTags,
+  filterContactsByTag,
   firstTouchResponseTime,
   leadsByCity,
   leadsBySource,
@@ -17,7 +19,11 @@ import { Dashboard } from "@/components/Dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams: Promise<{ tag?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const locationId = process.env.GHL_LOCATION_ID;
   if (!locationId) {
     throw new Error("Missing GHL_LOCATION_ID env var");
@@ -29,13 +35,22 @@ export default async function DashboardPage() {
   const cookieTheme = cookieStore.get("theme")?.value;
   const initialTheme = cookieTheme === "dark" ? "dark" : "light";
 
-  const [contacts, opportunities, pipelines, conversations, meta] = await Promise.all([
+  const [allContacts, allOpportunities, pipelines, allConversations, meta] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
     getAllConversations(locationId),
     getMetaInsights(),
   ]);
+
+  const availableTags = distinctTags(allContacts);
+  const { tag: rawTag } = await searchParams;
+  const selectedTag = rawTag && availableTags.includes(rawTag) ? rawTag : null;
+
+  const contacts = selectedTag ? filterContactsByTag(allContacts, selectedTag) : allContacts;
+  const contactIds = new Set(contacts.map((c) => c.id));
+  const opportunities = selectedTag ? allOpportunities.filter((o) => contactIds.has(o.contactId)) : allOpportunities;
+  const conversations = selectedTag ? allConversations.filter((c) => contactIds.has(c.contactId)) : allConversations;
 
   const bySource = leadsBySource(contacts);
   const byCity = leadsByCity(contacts);
@@ -65,6 +80,8 @@ export default async function DashboardPage() {
       byPipeline={byPipeline}
       stalled={stalled}
       meta={meta}
+      availableTags={availableTags}
+      selectedTag={selectedTag}
       initialLang={lang}
       initialTheme={initialTheme}
     />
