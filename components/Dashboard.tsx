@@ -17,6 +17,7 @@ import type { MetaInsights } from "@/lib/meta";
 import type { Lang } from "@/lib/i18n";
 import { AppHeader, usePrefs, type Dict, type Theme } from "@/components/AppHeader";
 import { StatTile } from "@/components/StatTile";
+import { AppFooter } from "@/components/AppFooter";
 import { BarChart } from "@/components/BarChart";
 import { LineChart } from "@/components/LineChart";
 import { SectionLabel } from "@/components/SectionLabel";
@@ -148,16 +149,16 @@ function MetaAdsPanel({ meta, t, locale }: { meta: MetaInsightsOk; t: Dict; loca
   return (
     <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label={t.metaSpend30d} value={money(meta.spend)} />
+        <StatTile icon="megaphone" label={t.metaSpend30d} value={money(meta.spend)} />
         <StatTile
-          label={t.metaCpl}
+          icon="users" label={t.metaCpl}
           value={meta.cpl != null ? money2(meta.cpl) : "—"}
           sublabel={t.metaLeadsReported(meta.leads.toLocaleString(locale))}
           accent="good"
         />
-        <StatTile label={t.metaCtr} value={`${meta.ctr.toFixed(2)}%`} sublabel={t.metaClicks(meta.clicks.toLocaleString(locale))} />
+        <StatTile icon="mousePointer" label={t.metaCtr} value={`${meta.ctr.toFixed(2)}%`} sublabel={t.metaClicks(meta.clicks.toLocaleString(locale))} />
         <StatTile
-          label={t.metaReach}
+          icon="eye" label={t.metaReach}
           value={meta.reach.toLocaleString(locale)}
           sublabel={t.metaImpressionsCpm(meta.impressions.toLocaleString(locale), money2(meta.cpm))}
         />
@@ -187,17 +188,17 @@ function MetaAdsPanel({ meta, t, locale }: { meta: MetaInsightsOk; t: Dict; loca
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
         <StatTile
-          label={t.metaSpendThisWeek}
+          icon="wallet" label={t.metaSpendThisWeek}
           value={money(wow.thisWeekSpend)}
           delta={wow.spendDeltaPct !== null ? { pct: wow.spendDeltaPct, caption: t.vsLastWeekAmount(money(wow.lastWeekSpend)) } : null}
         />
         <StatTile
-          label={t.leadsThisWeek}
+          icon="users" label={t.leadsThisWeek}
           value={wow.thisWeekLeads.toLocaleString(locale)}
           delta={wow.leadsDeltaPct !== null ? { pct: wow.leadsDeltaPct, caption: t.vsLastWeekAmount(wow.lastWeekLeads.toLocaleString(locale)) } : null}
         />
         <StatTile
-          label={t.metaCplThisWeek}
+          icon="receipt" label={t.metaCplThisWeek}
           value={wow.cplThisWeek != null ? money2(wow.cplThisWeek) : "—"}
           sublabel={wow.cplLastWeek != null ? t.vsLastWeekAmount(money2(wow.cplLastWeek)) : undefined}
         />
@@ -299,15 +300,19 @@ export function Dashboard(props: DashboardProps) {
 
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
 
+  const partners = companyName.split("/").map((p) => p.trim());
+  const partnershipLine = partners.length === 2 ? t.partnership(partners[0], partners[1]) : companyName;
+
   return (
-    <div className="w-full min-h-screen" style={{ background: "var(--page-plane)" }}>
-      <div className="max-w-6xl mx-auto px-6 sm:px-10 py-10 flex flex-col gap-10">
-        <AppHeader
-          companyName={companyName}
-          subtitle={t.contactsAndOpportunities(contactsCount, opportunitiesCount)}
-          generatedAtIso={generatedAtIso}
-          prefs={prefs}
-        />
+    <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--page-plane)" }}>
+      <AppHeader
+        companyName={companyName}
+        title={t.growthReport}
+        subtitle={`${partnershipLine} · ${t.contactsAndOpportunities(contactsCount, opportunitiesCount)}`}
+        generatedAtIso={generatedAtIso}
+        prefs={prefs}
+      />
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1">
 
         <SourceGroup title={t.crmGroupTitle} subtitle={t.crmGroupSubtitle} accent="var(--series-1)">
         {availableTags.length > 0 && (
@@ -317,18 +322,18 @@ export function Dashboard(props: DashboardProps) {
           <SectionLabel>{t.summary}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
-              label={t.leadsThisWeek}
+              icon="users" label={t.leadsThisWeek}
               value={wow.thisWeek.toLocaleString(locale)}
               delta={wow.deltaPct !== null ? { pct: wow.deltaPct, caption: t.vsLastWeek(wow.lastWeek) } : null}
             />
             <StatTile
-              label={t.closeRate}
+              icon="target" label={t.closeRate}
               value={`${(conversion.winRate * 100).toFixed(0)}%`}
               sublabel={t.wonOfClosed(conversion.won, conversion.won + conversion.lost)}
               accent={conversion.winRate >= 0.4 ? "good" : conversion.winRate > 0 ? "warning" : "neutral"}
             />
             <StatTile
-              label={t.medianFirstContact}
+              icon="clock" label={t.medianFirstContact}
               value={formatMinutes(responseTime.medianMinutes)}
               sublabel={responseTime.sampleSize > 0 ? t.overLeadsTracked(responseTime.sampleSize) : t.notEnoughData}
               accent="good"
@@ -356,7 +361,7 @@ export function Dashboard(props: DashboardProps) {
               labels={chartLabels}
             />
             <StatTile
-              label={t.stalledLeads}
+              icon="pause" label={t.stalledLeads}
               value={stalled.stalledCount.toLocaleString(locale)}
               sublabel={t.stalledSublabel(stalled.openCount, stalled.thresholdDays)}
               accent={stalled.stalledCount > 0 ? "warning" : "good"}
@@ -372,17 +377,17 @@ export function Dashboard(props: DashboardProps) {
           <SectionLabel>{t.responseSpeed}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
-              label={t.responseUnder5min}
+              icon="zap" label={t.responseUnder5min}
               value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.under5min / responseTime.sampleSize) * 100)}%` : "—"}
               accent="good"
             />
             <StatTile
-              label={t.responseUnder1hour}
+              icon="clock" label={t.responseUnder1hour}
               value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.under1hour / responseTime.sampleSize) * 100)}%` : "—"}
               accent="good"
             />
             <StatTile
-              label={t.noResponse24h}
+              icon="alert" label={t.noResponse24h}
               value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.overADay / responseTime.sampleSize) * 100)}%` : "—"}
               accent={responseTime.overADay > 0 ? "warning" : "neutral"}
             />
@@ -413,10 +418,10 @@ export function Dashboard(props: DashboardProps) {
           </section>
         </SourceGroup>
 
-        <footer className="text-xs pt-2 pb-6 border-t" style={{ color: "var(--text-muted)", borderColor: "var(--gridline)" }}>
-          <p className="pt-4">{t.firstContactFootnote}</p>
-        </footer>
-      </div>
+      </main>
+      <AppFooter t={t}>
+        <p>{t.firstContactFootnote}</p>
+      </AppFooter>
     </div>
   );
 }

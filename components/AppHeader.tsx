@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ToggleGroup } from "radix-ui";
-import * as SwitchPrimitive from "radix-ui/switch";
 import { getDict, localeFor, type Lang } from "@/lib/i18n";
 import { setClientCookie, setHtmlThemeAttribute } from "@/lib/client-cookies";
 import { logout } from "@/app/login/actions";
+import { Icon } from "@/components/icons";
 
 export type Theme = "light" | "dark";
 export type Dict = ReturnType<typeof getDict>;
@@ -31,34 +31,31 @@ export function usePrefs(initialLang: Lang, initialTheme: Theme) {
   return { lang, theme, t: getDict(lang), locale: localeFor(lang), changeLang, changeTheme };
 }
 
-function ThemeSwitch({ theme, onChange, label }: { theme: Theme; onChange: (t: Theme) => void; label: string }) {
+const iconButton =
+  "w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-colors outline-none hover:bg-[color-mix(in_srgb,var(--text-primary)_7%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--series-1)]";
+
+function ThemeToggle({ theme, onChange, label }: { theme: Theme; onChange: (t: Theme) => void; label: string }) {
+  const dark = theme === "dark";
   return (
-    <div className="flex items-center gap-2">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" aria-hidden>
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-      </svg>
-      <SwitchPrimitive.Root
-        checked={theme === "dark"}
-        onCheckedChange={(checked) => onChange(checked ? "dark" : "light")}
-        aria-label={label}
-        title={label}
-        className="w-9 h-5 rounded-full relative shrink-0 outline-none cursor-pointer transition-colors"
-        style={{ background: theme === "dark" ? "var(--series-1)" : "var(--gridline)" }}
-      >
-        <SwitchPrimitive.Thumb
-          className="block w-4 h-4 rounded-full transition-transform"
-          style={{
-            background: "#ffffff",
-            transform: theme === "dark" ? "translateX(18px)" : "translateX(2px)",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
-          }}
-        />
-      </SwitchPrimitive.Root>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" aria-hidden>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-      </svg>
-    </div>
+    <button
+      type="button"
+      onClick={() => onChange(dark ? "light" : "dark")}
+      aria-label={label}
+      title={label}
+      className={iconButton}
+      style={{ color: "var(--text-secondary)" }}
+    >
+      {dark ? (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+      ) : (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -69,17 +66,18 @@ function LangSwitch({ lang, onChange, label }: { lang: Lang; onChange: (l: Lang)
       value={lang}
       onValueChange={(next) => next && onChange(next as Lang)}
       aria-label={label}
-      className="inline-flex rounded-full overflow-hidden shrink-0"
-      style={{ border: "1px solid var(--border-hairline)", background: "var(--surface-1)" }}
+      className="inline-flex rounded-full p-0.5 shrink-0"
+      style={{ background: "color-mix(in srgb, var(--text-primary) 6%, transparent)" }}
     >
       {(["es", "en"] as Lang[]).map((code) => (
         <ToggleGroup.Item
           key={code}
           value={code}
-          className="w-8 h-6 text-xs font-medium uppercase transition-colors outline-none cursor-pointer"
+          className="h-7 px-2.5 rounded-full text-xs font-semibold uppercase transition-all outline-none cursor-pointer"
           style={{
-            color: lang === code ? "#ffffff" : "var(--text-secondary)",
-            background: lang === code ? "var(--series-1)" : "transparent",
+            color: lang === code ? "var(--text-primary)" : "var(--text-muted)",
+            background: lang === code ? "var(--surface-1)" : "transparent",
+            boxShadow: lang === code ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
           }}
         >
           {code}
@@ -99,8 +97,8 @@ function NavTabs({ t }: { t: Dict }) {
   const pathname = usePathname();
   return (
     <nav
-      className="inline-flex rounded-full p-1 gap-1 w-fit max-w-full overflow-x-auto"
-      style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)" }}
+      className="inline-flex rounded-full p-1 gap-0.5 w-fit max-w-full overflow-x-auto"
+      style={{ background: "color-mix(in srgb, var(--text-primary) 6%, transparent)" }}
     >
       {NAV.map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -109,10 +107,11 @@ function NavTabs({ t }: { t: Dict }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className="text-sm font-medium px-4 py-1.5 rounded-full transition-colors whitespace-nowrap"
+            className="text-sm font-medium px-4 py-1.5 rounded-full transition-all whitespace-nowrap"
             style={{
-              color: active ? "#ffffff" : "var(--text-secondary)",
-              background: active ? "var(--series-1)" : "transparent",
+              color: active ? "var(--text-primary)" : "var(--text-secondary)",
+              background: active ? "var(--surface-1)" : "transparent",
+              boxShadow: active ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
             }}
           >
             {t[item.key]}
@@ -123,13 +122,35 @@ function NavTabs({ t }: { t: Dict }) {
   );
 }
 
+function BrandMark({ companyName }: { companyName: string }) {
+  const partner = companyName.includes("/") ? companyName.split("/")[0].trim() : null;
+  return (
+    <Link href="/" className="flex items-center gap-3 shrink-0" aria-label={companyName}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/malpa-logo.png" alt="MALPA" width={104} height={18} className="logo-on-light h-[18px] w-auto" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/malpa-logo-white.png" alt="MALPA" width={104} height={18} className="logo-on-dark h-[18px] w-auto" />
+      {partner && (
+        <>
+          <span aria-hidden className="h-5 w-px hidden sm:block" style={{ background: "var(--border-hairline)" }} />
+          <span className="text-sm font-semibold hidden sm:inline" style={{ color: "var(--text-secondary)" }}>
+            {partner}
+          </span>
+        </>
+      )}
+    </Link>
+  );
+}
+
 export function AppHeader({
   companyName,
+  title,
   subtitle,
   generatedAtIso,
   prefs,
 }: {
   companyName: string;
+  title: string;
   subtitle: string;
   generatedAtIso: string;
   prefs: ReturnType<typeof usePrefs>;
@@ -142,65 +163,56 @@ export function AppHeader({
     timeZone: "America/Hermosillo",
   });
 
-  const isPartnership = companyName.includes("/");
-  const [leadGenPartner, salesCompany] = isPartnership
-    ? companyName.split("/").map((s) => s.trim())
-    : [null, companyName];
-  const companyInitial = isPartnership
-    ? (leadGenPartner?.[0] || "") + (salesCompany?.[0] || "")
-    : companyName.trim().charAt(0).toUpperCase() || "?";
-
   return (
-    <div className="flex flex-col gap-5">
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-semibold shrink-0"
-              style={{ background: "var(--series-1)", color: "#ffffff" }}
-              aria-hidden
-            >
-              {companyInitial}
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-                {companyName}
-              </h1>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                {isPartnership ? t.partnership(leadGenPartner ?? "", salesCompany ?? "") : t.growthReport}
-                {" · "}
-                {subtitle}
-              </p>
-            </div>
+    <>
+      <header
+        className="sticky top-0 z-40 w-full backdrop-blur-xl"
+        style={{
+          background: "color-mix(in srgb, var(--page-plane) 78%, transparent)",
+          borderBottom: "1px solid var(--border-hairline)",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-10 h-16 flex items-center justify-between gap-4">
+          <BrandMark companyName={companyName} />
+          <div className="hidden md:block">
+            <NavTabs t={t} />
           </div>
-          <div className="flex flex-col sm:items-end gap-2">
-            <div className="flex items-center gap-3">
-              <LangSwitch lang={lang} onChange={changeLang} label={t.language} />
-              <ThemeSwitch theme={theme} onChange={changeTheme} label={t.toggleTheme} />
-            </div>
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full w-fit"
-              style={{ background: "color-mix(in srgb, var(--status-good) 14%, transparent)", color: "var(--status-good)" }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--status-good)" }} />
-              {t.liveData}
-            </span>
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              {t.updatedAt(generatedAt)}
-            </span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <LangSwitch lang={lang} onChange={changeLang} label={t.language} />
+            <ThemeToggle theme={theme} onChange={changeTheme} label={t.toggleTheme} />
+            <form action={logout}>
+              <button type="submit" aria-label={t.logout} title={t.logout} className={iconButton} style={{ color: "var(--text-secondary)" }}>
+                <Icon name="logOut" size={17} />
+              </button>
+            </form>
           </div>
-        </header>
-      <div className="flex items-center justify-between gap-3">
-        <NavTabs t={t} />
-        <form action={logout}>
-          <button
-            type="submit"
-            className="text-sm px-3 py-1.5 rounded-full cursor-pointer transition-colors hover:bg-[var(--surface-1)]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {t.logout}
-          </button>
-        </form>
+        </div>
+        <div className="md:hidden px-4 pb-3 -mt-1">
+          <NavTabs t={t} />
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-10 pt-8 sm:pt-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            {title}
+          </h1>
+          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--text-secondary)" }}>
+            {subtitle}
+          </p>
+        </div>
+        <div
+          className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full w-fit shrink-0"
+          style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)", color: "var(--text-secondary)" }}
+        >
+          <span className="relative flex w-2 h-2">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" style={{ background: "var(--status-good)" }} />
+            <span className="relative inline-flex w-2 h-2 rounded-full" style={{ background: "var(--status-good)" }} />
+          </span>
+          {t.liveData}
+          <span style={{ color: "var(--text-muted)" }}>· {t.updatedAt(generatedAt)}</span>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -4,6 +4,7 @@ import type { FinanceSummary, LineFinance } from "@/lib/finance";
 import type { Lang } from "@/lib/i18n";
 import type { ProductLine } from "@/lib/leads";
 import { AppHeader, usePrefs, type Theme } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { StatTile } from "@/components/StatTile";
 import { BarChart } from "@/components/BarChart";
 import { Funnel } from "@/components/Funnel";
@@ -64,9 +65,9 @@ export function MoneyView(props: MoneyViewProps) {
   };
 
   return (
-    <div className="w-full min-h-screen" style={{ background: "var(--page-plane)" }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-10 py-10 flex flex-col gap-10">
-        <AppHeader companyName={companyName} subtitle={t.moneySubtitle(since)} generatedAtIso={generatedAtIso} prefs={prefs} />
+    <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--page-plane)" }}>
+      <AppHeader companyName={companyName} title={t.moneyTitle} subtitle={t.moneySubtitle(since)} generatedAtIso={generatedAtIso} prefs={prefs} />
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1">
 
         {(!metaConfigured || metaError) && (
           <div
@@ -80,25 +81,26 @@ export function MoneyView(props: MoneyViewProps) {
         <section>
           <SectionLabel>{t.bigPicture}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile label={t.invested} value={money(tot.spend)} sublabel={t.investedSub(tot.paidLeads)} />
-            <StatTile label={t.revenueWon} value={money(tot.wonValue)} sublabel={t.revenueWonSub(tot.won)} accent="good" />
+            <StatTile icon="megaphone" label={t.invested} value={money(tot.spend)} sublabel={t.investedSub(tot.paidLeads)} />
+            <StatTile icon="trophy" label={t.revenueWon} value={money(tot.wonValue)} sublabel={t.revenueWonSub(tot.won)} accent="good" />
             <StatTile
+              icon="trendUp"
               label={t.roas}
               value={roasText(tot.roas)}
               sublabel={tot.roas != null ? t.roasSub(money2(tot.roas)) : undefined}
               accent={tot.roas == null ? "neutral" : tot.roas >= 1 ? "good" : "warning"}
             />
-            <StatTile label={t.quotedOpen} value={money(tot.openQuotedValue)} sublabel={t.quotedOpenSub(tot.openQuotes)} />
+            <StatTile icon="fileText" label={t.quotedOpen} value={money(tot.openQuotedValue)} sublabel={t.quotedOpenSub(tot.openQuotes)} />
           </div>
         </section>
 
         <section>
           <SectionLabel>{t.unitCosts}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile label={t.cplReal} value={moneyOrDash(tot.cpl)} sublabel={t.cplRealSub} />
-            <StatTile label={t.costPerQuote} value={moneyOrDash(tot.costPerQuote)} sublabel={t.costPerQuoteSub(tot.quotes)} />
-            <StatTile label={t.cac} value={moneyOrDash(tot.cac)} sublabel={t.cacSub(tot.won)} />
-            <StatTile label={t.avgQuote} value={moneyOrDash(tot.avgQuote)} sublabel={t.avgQuoteSub} />
+            <StatTile icon="users" label={t.cplReal} value={moneyOrDash(tot.cpl)} sublabel={t.cplRealSub} />
+            <StatTile icon="receipt" label={t.costPerQuote} value={moneyOrDash(tot.costPerQuote)} sublabel={t.costPerQuoteSub(tot.quotes)} />
+            <StatTile icon="target" label={t.cac} value={moneyOrDash(tot.cac)} sublabel={t.cacSub(tot.won)} />
+            <StatTile icon="tag" label={t.avgQuote} value={moneyOrDash(tot.avgQuote)} sublabel={t.avgQuoteSub} />
           </div>
         </section>
 
@@ -106,18 +108,20 @@ export function MoneyView(props: MoneyViewProps) {
           <SectionLabel>{t.lostMoney}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
+              icon="alert"
               label={t.wastedSpend}
               value={money(tot.wastedSpend)}
               sublabel={wastedShare != null ? t.wastedSpendSub(pct(wastedShare)) : undefined}
               accent={tot.wastedSpend > 0 ? "warning" : "neutral"}
             />
             <StatTile
+              icon="hourglass"
               label={t.atRisk}
               value={money(finance.atRisk.value)}
               sublabel={t.atRiskSub(finance.atRisk.count, finance.atRisk.thresholdDays)}
               accent={finance.atRisk.count > 0 ? "warning" : "good"}
             />
-            <StatTile label={t.lostValue} value={money(tot.lostValue)} sublabel={t.lostValueSub} />
+            <StatTile icon="xCircle" label={t.lostValue} value={money(tot.lostValue)} sublabel={t.lostValueSub} />
           </div>
           <div className="mt-4">
             <Panel title={t.whereSpendGoes}>
@@ -253,7 +257,7 @@ export function MoneyView(props: MoneyViewProps) {
 
         <section>
           <SectionLabel>{t.byUseCaseTitle}</SectionLabel>
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start">
             <Panel subtitle={t.byUseCaseSubtitle}>
               <table className="w-full text-sm">
                 <thead>
@@ -283,6 +287,7 @@ export function MoneyView(props: MoneyViewProps) {
               </table>
             </Panel>
             <StatTile
+              icon="battery"
               label={t.batteries}
               value={count(finance.batteriesRequested)}
               sublabel={t.batteriesSub(count(finance.batteriesQuoted))}
@@ -290,10 +295,10 @@ export function MoneyView(props: MoneyViewProps) {
           </div>
         </section>
 
-        <footer className="text-xs pt-2 pb-6 border-t" style={{ color: "var(--text-muted)", borderColor: "var(--gridline)" }}>
-          <p className="pt-4">{t.moneyFootnote}</p>
-        </footer>
-      </div>
+      </main>
+      <AppFooter t={t}>
+        <p>{t.moneyFootnote}</p>
+      </AppFooter>
     </div>
   );
 }
