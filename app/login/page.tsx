@@ -9,10 +9,7 @@ export const metadata: Metadata = { title: "Iniciar sesión · MALPA" };
 
 const COPY = {
   es: {
-    eyebrow: "Desert Growth × MALPA",
-    title: "Dashboard de crecimiento",
-    intro: "Leads, ventas e inversión en anuncios en un solo lugar.",
-    footer: "Acceso privado para el equipo de MALPA y Desert Growth",
+    title: "Iniciar sesión",
     form: {
       label: "Contraseña",
       placeholder: "Ingresa la contraseña",
@@ -25,10 +22,7 @@ const COPY = {
     } satisfies LoginCopy,
   },
   en: {
-    eyebrow: "Desert Growth × MALPA",
-    title: "Growth dashboard",
-    intro: "Leads, sales and ad spend in one place.",
-    footer: "Private access for the MALPA and Desert Growth team",
+    title: "Log in",
     form: {
       label: "Password",
       placeholder: "Enter the password",
@@ -86,29 +80,13 @@ export default async function LoginPage({ searchParams }: PageProps) {
             <img src="/malpa-logo.png" alt="MALPA" width={220} height={38} className="logo-on-light h-auto w-[220px]" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/malpa-logo-white.png" alt="MALPA" width={220} height={38} className="logo-on-dark h-auto w-[220px]" />
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--brand-red)" }}>
-                {copy.eyebrow}
-              </span>
-              <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-                {copy.title}
-              </h1>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                {copy.intro}
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+              {copy.title}
+            </h1>
           </div>
 
           <LoginForm next={next} copy={copy.form} />
         </div>
-
-        <p className="text-xs text-center mt-6 flex items-center justify-center gap-1.5" style={{ color: "var(--text-muted)" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-          {copy.footer}
-        </p>
       </div>
     </main>
   );
