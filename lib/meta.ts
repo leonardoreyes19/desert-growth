@@ -245,3 +245,54 @@ export async function getMetaInsights(): Promise<MetaInsights> {
     return { configured: true, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+export type MetaAdSpend = {
+  adId: string;
+  adName: string;
+  campaignId: string;
+  campaignName: string;
+  spend: number;
+};
+
+export type MetaLifetimeSpend =
+  | { configured: false }
+  | { configured: true; error: string }
+  | { configured: true; error?: undefined; currency: string; byAd: MetaAdSpend[] };
+
+/**
+ * Lifetime (date_preset=maximum) spend per ad for the given campaigns — the
+ * ones CRM leads are attributed to via their utm campaign id. Used to compute
+ * real cost per lead / quote / sale against CRM outcomes. Same fail-safe
+ * contract as getMetaInsights().
+ */
+export async function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
+  const token = process.env.META_ACCESS_TOKEN?.trim();
+  const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
+  if (!token || !rawAccount) return { configured: false };
+  if (campaignIds.length === 0) return { configured: true, currency: "MXN", byAd: [] };
+
+  const account = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
+  try {
+    const rows = (await graphGet(`${account}/insights`, {
+      date_preset: "maximum",
+      level: "ad",
+      fields: "ad_id,ad_name,campaign_id,campaign_name,spend,account_currency",
+      filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: campaignIds }]),
+      limit: "500",
+    })) as (InsightRow & { ad_id?: string; ad_name?: string; campaign_id?: string })[];
+
+    return {
+      configured: true,
+      currency: rows[0]?.account_currency || "MXN",
+      byAd: rows.map((r) => ({
+        adId: r.ad_id || "",
+        adName: r.ad_name || "(sin nombre)",
+        campaignId: r.campaign_id || "",
+        campaignName: r.campaign_name || "(sin nombre)",
+        spend: num(r.spend),
+      })),
+    };
+  } catch (err) {
+    return { configured: true, error: err instanceof Error ? err.message : String(err) };
+  }
+}

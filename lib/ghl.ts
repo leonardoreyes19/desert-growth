@@ -41,6 +41,20 @@ export type GhlContact = {
   dateAdded: string;
   city?: string;
   tags?: string[];
+  customFields?: GhlCustomFieldValue[];
+};
+
+export type GhlCustomFieldValue = {
+  id: string;
+  value: string | number | string[];
+};
+
+export type GhlAttribution = {
+  utmCampaignId?: string;
+  utmAdId?: string;
+  utmSessionSource?: string;
+  url?: string;
+  isFirst?: boolean;
 };
 
 type ContactsResponse = {
@@ -78,6 +92,8 @@ export type GhlOpportunity = {
   updatedAt: string;
   lastStatusChangeAt: string;
   lastStageChangeAt: string;
+  lostReasonId?: string | null;
+  attributions?: GhlAttribution[];
 };
 
 type OpportunitiesResponse = {
@@ -143,4 +159,36 @@ export async function getAllConversations(locationId: string): Promise<GhlConver
     startAfterId = data.conversations[data.conversations.length - 1]?.id;
   }
   return all;
+}
+
+export type GhlCustomFieldDef = {
+  id: string;
+  name: string;
+};
+
+/**
+ * Requires the `locations/customFields.readonly` scope on the private
+ * integration token. Returns null (instead of throwing) when the token lacks
+ * it, so callers can fall back to known labels.
+ */
+export async function getCustomFieldDefs(locationId: string): Promise<GhlCustomFieldDef[] | null> {
+  try {
+    const data = await ghlGet<{ customFields: GhlCustomFieldDef[] }>(`/locations/${locationId}/customFields`, {});
+    return data.customFields;
+  } catch {
+    return null;
+  }
+}
+
+export type GhlNote = {
+  id: string;
+  body?: string;
+  bodyText?: string;
+  userId?: string;
+  dateAdded: string;
+};
+
+export async function getContactNotes(contactId: string): Promise<GhlNote[]> {
+  const data = await ghlGet<{ notes: GhlNote[] }>(`/contacts/${contactId}/notes`, {});
+  return data.notes ?? [];
 }

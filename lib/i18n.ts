@@ -1,3 +1,5 @@
+import { extraDictionaries, type ExtraDict } from "./i18n-extra";
+
 export type Lang = "es" | "en";
 
 export const LANGS: Lang[] = ["es", "en"];
@@ -274,6 +276,6 @@ export const dictionaries: Record<Lang, Dict> = {
   },
 };
 
-export function getDict(lang: Lang): Dict {
-  return dictionaries[lang];
+export function getDict(lang: Lang): Dict & ExtraDict {
+  return { ...dictionaries[lang], ...extraDictionaries[lang] };
 }
