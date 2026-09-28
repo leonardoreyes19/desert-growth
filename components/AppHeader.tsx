@@ -7,6 +7,7 @@ import { ToggleGroup } from "radix-ui";
 import * as SwitchPrimitive from "radix-ui/switch";
 import { getDict, localeFor, type Lang } from "@/lib/i18n";
 import { setClientCookie, setHtmlThemeAttribute } from "@/lib/client-cookies";
+import { logout } from "@/app/login/actions";
 
 export type Theme = "light" | "dark";
 export type Dict = ReturnType<typeof getDict>;
@@ -188,7 +189,18 @@ export function AppHeader({
             </span>
           </div>
         </header>
-      <NavTabs t={t} />
+      <div className="flex items-center justify-between gap-3">
+        <NavTabs t={t} />
+        <form action={logout}>
+          <button
+            type="submit"
+            className="text-sm px-3 py-1.5 rounded-full cursor-pointer transition-colors hover:bg-[var(--surface-1)]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {t.logout}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

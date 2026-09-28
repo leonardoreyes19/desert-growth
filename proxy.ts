@@ -1,45 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE, safeEqual, sessionToken } from "@/lib/auth";
 
 /**
- * Site-wide password (HTTP Basic Auth) — the Leads view exposes customer
- * names, phones, emails and notes. The browser asks once and remembers it.
- * Any username works; only DASHBOARD_PASSWORD is checked.
+ * Everything requires a login (the Leads view exposes customer names, phones,
+ * emails and notes). Unauthenticated page requests go to /login; API requests
+ * get a 401.
  *
  * Without DASHBOARD_PASSWORD the site stays open in local dev but refuses to
  * serve in production, so a missing env var can't silently make it public.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  if (pathname === "/login") return NextResponse.next();
+
   const password = process.env.DASHBOARD_PASSWORD;
   if (!password) {
     if (process.env.NODE_ENV !== "production") return NextResponse.next();
     return new NextResponse("DASHBOARD_PASSWORD is not configured", { status: 503 });
   }
 
-  const header = request.headers.get("authorization") ?? "";
-  if (header.startsWith("Basic ")) {
-    try {
-      const decoded = atob(header.slice(6));
-      const given = decoded.slice(decoded.indexOf(":") + 1);
-      if (safeEqual(given, password)) return NextResponse.next();
-    } catch {
-      // malformed header — fall through to the challenge
-    }
+  const cookie = request.cookies.get(SESSION_COOKIE)?.value;
+  if (cookie && safeEqual(cookie, await sessionToken(password))) return NextResponse.next();
+
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  return new NextResponse("Contraseña requerida", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Desert Growth", charset="UTF-8"' },
-  });
-}
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+  const login = new URL("/login", request.url);
+  if (pathname !== "/") login.searchParams.set("next", pathname + search);
+  return NextResponse.redirect(login);
 }
 
 export const config = {
-  // The weekly-report cron is called by Vercel with its own CRON_SECRET.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/cron/).*)"],
+  // Static build assets and the login page's brand images stay public. The
+  // weekly-report cron is called by Vercel with its own CRON_SECRET.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|malpa-logo|api/cron/).*)"],
 };

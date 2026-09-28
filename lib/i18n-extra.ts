@@ -5,6 +5,7 @@ const es = {
   navSummary: "Resumen",
   navMoney: "Dinero",
   navLeads: "Leads",
+  logout: "Salir",
 
   moneyTitle: "Dinero: inversión, retorno y pérdidas",
   moneySubtitle: (since: string) =>
@@ -152,6 +153,7 @@ const en: ExtraDict = {
   navSummary: "Overview",
   navMoney: "Money",
   navLeads: "Leads",
+  logout: "Sign out",
 
   moneyTitle: "Money: spend, return and losses",
   moneySubtitle: (since) => `Since the first campaign lead (${since}) · real Meta spend matched to each CRM lead`,

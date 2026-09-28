@@ -92,3 +92,30 @@ body {
   color: var(--text-primary);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/* MALPA brand (login page) */
+:root {
+  --brand-red: #e92d35;
+  --brand-red-strong: #c9202a;
+}
+
+.logo-on-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-on-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .logo-on-dark {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .logo-on-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .logo-on-dark {
+  display: block;
+}
