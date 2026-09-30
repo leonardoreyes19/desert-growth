@@ -152,6 +152,7 @@ export function conversionSummary(opportunities: GhlOpportunity[], pipelines: Gh
 
 const IN_CONVERSATION_STAGE_RE = /contactad|cotizaci|negociaci/i;
 const NO_RESPONSE_STAGE_RE = /sin respuesta/i;
+const QUOTED_STAGE_RE = /cotizaci/i;
 
 export type PipelineSnapshot = {
   /** Open leads we're talking to: Contactado, Cotización enviada, En negociación. */
@@ -261,7 +262,8 @@ export function stalledOpenOpportunities(
   thresholdDays = 14
 ): StalledSummary {
   const { stageName, isWon, isLost } = stageClassifier(pipelines);
-  const open = opportunities.filter((o) => !isWon(o) && !isLost(o));
+  // A sent quote is waiting on the customer, not on us — it doesn't count as stalled.
+  const open = opportunities.filter((o) => !isWon(o) && !isLost(o) && !QUOTED_STAGE_RE.test(stageName(o)));
   const now = Date.now();
   let stalledCount = 0;
   let oldestDays: number | null = null;

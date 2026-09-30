@@ -152,7 +152,7 @@ export default function WeeklyReport({
                     <StatCell
                       label="Leads estancados"
                       value={stalled.stalledCount.toLocaleString("es-MX")}
-                      sublabel={`de ${stalled.openCount} abiertos, ${stalled.thresholdDays}+ días sin mover`}
+                      sublabel={`de ${stalled.openCount} abiertos sin cotización, ${stalled.thresholdDays}+ días sin mover`}
                     />
                   </tr>
                 </tbody>

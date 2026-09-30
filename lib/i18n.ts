@@ -177,7 +177,7 @@ export const dictionaries: Record<Lang, Dict> = {
     salesPipeline: "Pipeline de ventas",
     opportunitiesByStage: "Oportunidades por etapa (todos los pipelines)",
     stalledLeads: "Leads estancados",
-    stalledSublabel: (open, days) => `de ${open} abiertos, sin mover de etapa en ${days}+ días`,
+    stalledSublabel: (open, days) => `de ${open} abiertos sin cotización, sin mover de etapa en ${days}+ días`,
     seeStalledLeads: "Ver la lista",
     opportunitiesByProductLine: "Oportunidades por línea de producto",
     lithiumFootnote:
@@ -276,7 +276,7 @@ export const dictionaries: Record<Lang, Dict> = {
     salesPipeline: "Sales pipeline",
     opportunitiesByStage: "Opportunities by stage (all pipelines)",
     stalledLeads: "Stalled leads",
-    stalledSublabel: (open, days) => `of ${open} open, no stage change in ${days}+ days`,
+    stalledSublabel: (open, days) => `of ${open} open without a quote, no stage change in ${days}+ days`,
     seeStalledLeads: "See the list",
     opportunitiesByProductLine: "Opportunities by product line",
     lithiumFootnote:

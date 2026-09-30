@@ -21,12 +21,15 @@ export const DEAD_BUCKETS: StageBucket[] = ["lost", "disqualified", "noResponse"
 /** Buckets where a quote has been sent (current stage at or past "Cotización enviada"). */
 export const QUOTED_BUCKETS: StageBucket[] = ["quoted", "negotiation", "won"];
 
-/** Days without a stage change after which an open lead counts as stalled (same rule as the Resumen tile). */
+/**
+ * Days without a stage change after which an open lead counts as stalled (same rule as the Resumen tile).
+ * Leads with a quote sent are waiting on the customer, so they're never stalled.
+ */
 export const STALLED_DAYS = 14;
-const CLOSED_BUCKETS: StageBucket[] = ["won", "lost", "disqualified"];
+const NOT_STALLABLE_BUCKETS: StageBucket[] = ["won", "lost", "disqualified", "quoted"];
 
 export function isStalled(r: LeadRow): boolean {
-  return r.stage != null && !CLOSED_BUCKETS.includes(r.bucket) && (r.daysInStage ?? 0) >= STALLED_DAYS;
+  return r.stage != null && !NOT_STALLABLE_BUCKETS.includes(r.bucket) && (r.daysInStage ?? 0) >= STALLED_DAYS;
 }
 
 export type LeadNote = { id: string; text: string; dateAdded: string };
