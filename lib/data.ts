@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { getAllContacts, getAllConversations, getAllOpportunities, getCustomFieldDefs, getPipelines } from "./ghl";
+import { excludeBulkImports } from "./metrics";
 import { getMetaLifetimeSpend, type MetaAdSpend } from "./meta";
 import { attributedCampaignIds, buildLeadRows, fieldLabelsFrom, type FieldLabels, type LeadRow } from "./leads";
 import { isLang, DEFAULT_LANG, type Lang } from "./i18n";
@@ -49,7 +50,7 @@ export async function loadLeadData(): Promise<LeadData> {
   const adSpend = meta.configured && meta.error === undefined ? meta.byAd : [];
 
   return {
-    rows: buildLeadRows({ locationId, contacts, opportunities, pipelines, conversations, adSpend }),
+    rows: buildLeadRows({ locationId, contacts: excludeBulkImports(contacts), opportunities, pipelines, conversations, adSpend }),
     adSpend,
     currency: meta.configured && meta.error === undefined ? meta.currency : "MXN",
     metaError: meta.configured && meta.error !== undefined ? meta.error : null,

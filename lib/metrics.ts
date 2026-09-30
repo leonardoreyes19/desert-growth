@@ -233,22 +233,79 @@ export type WeekOverWeek = {
   deltaPct: number | null;
 };
 
-export function leadsWeekOverWeek(contacts: GhlContact[]): WeekOverWeek {
-  const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000;
-  const thisWeekStart = now - 7 * oneDay;
-  const lastWeekStart = now - 14 * oneDay;
-
+function countWeekOverWeek(
+  contacts: GhlContact[],
+  thisWeekStart: number,
+  thisWeekEnd: number,
+  lastWeekStart: number,
+  lastWeekEnd: number
+): WeekOverWeek {
   let thisWeek = 0;
   let lastWeek = 0;
   for (const c of contacts) {
     const t = new Date(c.dateAdded).getTime();
-    if (t >= thisWeekStart) thisWeek++;
-    else if (t >= lastWeekStart) lastWeek++;
+    if (t >= thisWeekStart && t < thisWeekEnd) thisWeek++;
+    else if (t >= lastWeekStart && t < lastWeekEnd) lastWeek++;
   }
 
   const deltaPct = lastWeek > 0 ? (thisWeek - lastWeek) / lastWeek : null;
   return { thisWeek, lastWeek, deltaPct };
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Rolling last 7 days vs. the 7 before — used by the Monday email, which reports the week that just ended. */
+export function leadsWeekOverWeek(contacts: GhlContact[]): WeekOverWeek {
+  const now = Date.now();
+  return countWeekOverWeek(contacts, now - 7 * ONE_DAY_MS, Infinity, now - 14 * ONE_DAY_MS, now - 7 * ONE_DAY_MS);
+}
+
+// America/Hermosillo is UTC-7 year-round (no DST).
+const HERMOSILLO_OFFSET_MS = -7 * 60 * 60 * 1000;
+
+/** Monday 00:00 (Hermosillo time) of the week containing `now`, as a UTC timestamp. */
+function startOfWeek(now: number): number {
+  const local = new Date(now + HERMOSILLO_OFFSET_MS);
+  const daysSinceMonday = (local.getUTCDay() + 6) % 7;
+  const localMidnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  return localMidnight - daysSinceMonday * ONE_DAY_MS - HERMOSILLO_OFFSET_MS;
+}
+
+/**
+ * Leads since Monday 00:00 (Hermosillo) vs. the same stretch of last week
+ * (Monday 00:00 up to this same weekday and hour), so the comparison is fair
+ * mid-week instead of pitting a partial week against a full one.
+ */
+export function leadsWeekToDate(contacts: GhlContact[]): WeekOverWeek {
+  const now = Date.now();
+  const weekStart = startOfWeek(now);
+  return countWeekOverWeek(contacts, weekStart, Infinity, weekStart - 7 * ONE_DAY_MS, now - 7 * ONE_DAY_MS);
+}
+
+const BULK_IMPORT_MIN_SIZE = 20;
+const BULK_IMPORT_MAX_GAP_MS = 60 * 1000;
+
+/**
+ * Drops contacts created in bulk (CSV imports, the WhatsApp coexistence sync
+ * that copied ~900 phone contacts into GHL on 2026-09-29). A burst is a run of
+ * contacts each created within a minute of the previous one; real leads never
+ * chain 20+ like that, so any such run is an import.
+ */
+export function excludeBulkImports(contacts: GhlContact[]): GhlContact[] {
+  const sorted = [...contacts].sort((a, b) => new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime());
+  const imported = new Set<string>();
+  let run: GhlContact[] = [];
+  const flush = () => {
+    if (run.length >= BULK_IMPORT_MIN_SIZE) for (const c of run) imported.add(c.id);
+    run = [];
+  };
+  for (const c of sorted) {
+    const prev = run[run.length - 1];
+    if (prev && new Date(c.dateAdded).getTime() - new Date(prev.dateAdded).getTime() > BULK_IMPORT_MAX_GAP_MS) flush();
+    run.push(c);
+  }
+  flush();
+  return contacts.filter((c) => !imported.has(c.id));
 }
 
 export function formatMinutes(minutes: number | null): string {

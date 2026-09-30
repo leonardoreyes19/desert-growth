@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { getAllContacts, getAllConversations, getAllOpportunities, getPipelines } from "@/lib/ghl";
 import {
   conversionSummary,
+  excludeBulkImports,
   firstTouchResponseTime,
   leadsBySource,
   leadsWeekOverWeek,
@@ -40,13 +41,14 @@ export async function GET(req: NextRequest) {
   if (!resendApiKey) return NextResponse.json({ error: "Missing RESEND_API_KEY" }, { status: 500 });
   if (recipients.length === 0) return NextResponse.json({ error: "Missing REPORT_RECIPIENTS" }, { status: 500 });
 
-  const [contacts, opportunities, pipelines, conversations] = await Promise.all([
+  const [ghlContacts, opportunities, pipelines, conversations] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
     getAllConversations(locationId),
   ]);
 
+  const contacts = excludeBulkImports(ghlContacts);
   const bySource = leadsBySource(contacts);
   const byStage = pipelineByStage(opportunities, pipelines);
   const conversion = conversionSummary(opportunities, pipelines);

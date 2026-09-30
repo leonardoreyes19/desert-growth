@@ -3,12 +3,13 @@ import { getAllContacts, getAllConversations, getAllOpportunities, getPipelines 
 import {
   conversionSummary,
   distinctTags,
+  excludeBulkImports,
   filterContactsByTag,
   firstTouchResponseTime,
   leadsByCity,
   leadsBySource,
   leadsOverTime,
-  leadsWeekOverWeek,
+  leadsWeekToDate,
   opportunitiesByPipeline,
   pipelineByStage,
   stalledOpenOpportunities,
@@ -35,7 +36,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const cookieTheme = cookieStore.get("theme")?.value;
   const initialTheme = cookieTheme === "dark" ? "dark" : "light";
 
-  const [allContacts, allOpportunities, pipelines, allConversations, meta] = await Promise.all([
+  const [ghlContacts, allOpportunities, pipelines, allConversations, meta] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
@@ -43,6 +44,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getMetaInsights(),
   ]);
 
+  const allContacts = excludeBulkImports(ghlContacts);
   const availableTags = distinctTags(allContacts);
   const { tag: rawTag } = await searchParams;
   const selectedTag = rawTag && availableTags.includes(rawTag) ? rawTag : null;
@@ -59,7 +61,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const byPipeline = opportunitiesByPipeline(opportunities, pipelines);
   const conversion = conversionSummary(opportunities, pipelines);
   const responseTime = firstTouchResponseTime(contacts, conversations);
-  const wow = leadsWeekOverWeek(contacts);
+  const wow = leadsWeekToDate(contacts);
   const stalled = stalledOpenOpportunities(opportunities, pipelines, 14);
 
   const companyName = process.env.REPORT_COMPANY_NAME || "Nombre de empresa pendiente";

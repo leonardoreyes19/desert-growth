@@ -108,7 +108,7 @@ export const dictionaries: Record<Lang, Dict> = {
 
     summary: "Resumen",
     leadsThisWeek: "Leads esta semana",
-    vsLastWeek: (n) => `vs. ${n} la semana anterior`,
+    vsLastWeek: (n) => `vs. ${n} a esta altura la semana pasada`,
     closeRate: "Tasa de cierre",
     wonOfClosed: (won, closed) => `${won} ganadas de ${closed} cerradas`,
     medianFirstContact: "Tiempo a primer contacto (mediana)",
@@ -196,7 +196,7 @@ export const dictionaries: Record<Lang, Dict> = {
 
     summary: "Summary",
     leadsThisWeek: "Leads this week",
-    vsLastWeek: (n) => `vs. ${n} last week`,
+    vsLastWeek: (n) => `vs. ${n} at this point last week`,
     closeRate: "Close rate",
     wonOfClosed: (won, closed) => `${won} won of ${closed} closed`,
     medianFirstContact: "Time to first contact (median)",
