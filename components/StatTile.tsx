@@ -6,11 +6,28 @@ const ACCENT_COLOR = {
   warning: "var(--status-warning)",
 } as const;
 
+export type Comparison = { pct: number | null; caption: string; higherIsBetter?: boolean };
+
+function DeltaChip({ pct, higherIsBetter = true }: { pct: number; higherIsBetter?: boolean }) {
+  const better = higherIsBetter ? pct > 0 : pct < 0;
+  const tone = pct === 0 ? "var(--baseline)" : better ? "var(--status-good)" : "var(--status-warning)";
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full tabular-nums shrink-0"
+      style={{ background: `color-mix(in srgb, ${tone} 16%, transparent)`, color: "var(--text-primary)" }}
+    >
+      <Icon name={pct > 0 ? "arrowUp" : pct < 0 ? "arrowDown" : "arrowUpDown"} size={12} style={{ color: tone }} />
+      {Math.abs(Math.round(pct * 100))}%
+    </span>
+  );
+}
+
 export function StatTile({
   label,
   value,
   sublabel,
   delta,
+  comparisons = [],
   accent = "neutral",
   icon,
 }: {
@@ -18,6 +35,8 @@ export function StatTile({
   value: string;
   sublabel?: string;
   delta?: { pct: number; caption: string } | null;
+  /** Extra comparison rows (e.g. vs. last week and vs. last month); `pct` null shows the caption alone. */
+  comparisons?: Comparison[];
   accent?: "neutral" | "good" | "warning";
   icon?: IconName;
 }) {
@@ -62,6 +81,19 @@ export function StatTile({
           </span>
         )}
       </div>
+
+      {comparisons.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {comparisons.map((c) => (
+            <div key={c.caption} className="flex items-center gap-2">
+              {c.pct !== null && <DeltaChip pct={c.pct} higherIsBetter={c.higherIsBetter} />}
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {c.caption}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(sublabel || delta) && (
         <div className="flex flex-col gap-0.5 mt-auto">

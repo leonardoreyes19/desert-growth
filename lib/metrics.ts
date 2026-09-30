@@ -120,6 +120,14 @@ export function pipelineByStage(opportunities: GhlOpportunity[], pipelines: GhlP
     .sort((a, b) => a.position - b.position);
 }
 
+function stageClassifier(pipelines: GhlPipeline[]) {
+  const { stageIdToName } = buildStageMaps(pipelines);
+  const stageName = (o: GhlOpportunity) => stageIdToName.get(o.pipelineStageId) || "";
+  const isWon = (o: GhlOpportunity) => o.status === "won" || WON_STAGE_RE.test(stageName(o));
+  const isLost = (o: GhlOpportunity) => !isWon(o) && (o.status === "lost" || LOST_STAGE_RE.test(stageName(o)));
+  return { stageName, isWon, isLost };
+}
+
 export type ConversionSummary = {
   total: number;
   won: number;
@@ -128,22 +136,39 @@ export type ConversionSummary = {
   winRate: number;
 };
 
+/**
+ * A lead only counts as closed once it became a deal (Ganado) or told us no
+ * (Perdido / marked lost). "Sin respuesta" and every other stage are still open.
+ */
 export function conversionSummary(opportunities: GhlOpportunity[], pipelines: GhlPipeline[]): ConversionSummary {
-  const { stageIdToName } = buildStageMaps(pipelines);
-
-  function isWon(o: GhlOpportunity) {
-    return o.status === "won" || WON_STAGE_RE.test(stageIdToName.get(o.pipelineStageId) || "");
-  }
-  function isLost(o: GhlOpportunity) {
-    return o.status === "lost" || LOST_STAGE_RE.test(stageIdToName.get(o.pipelineStageId) || "");
-  }
-
+  const { isWon, isLost } = stageClassifier(pipelines);
   const total = opportunities.length;
   const won = opportunities.filter(isWon).length;
   const lost = opportunities.filter(isLost).length;
   const open = total - won - lost;
   const closed = won + lost;
   return { total, won, lost, open, winRate: closed > 0 ? won / closed : 0 };
+}
+
+const IN_CONVERSATION_STAGE_RE = /contactad|cotizaci|negociaci/i;
+const NO_RESPONSE_STAGE_RE = /sin respuesta/i;
+
+export type PipelineSnapshot = {
+  /** Open leads we're talking to: Contactado, Cotización enviada, En negociación. */
+  inConversation: number;
+  /** Every lead not yet Ganado or Perdido. */
+  open: number;
+  noResponse: number;
+};
+
+export function pipelineSnapshot(opportunities: GhlOpportunity[], pipelines: GhlPipeline[]): PipelineSnapshot {
+  const { stageName, isWon, isLost } = stageClassifier(pipelines);
+  const open = opportunities.filter((o) => !isWon(o) && !isLost(o));
+  return {
+    inConversation: open.filter((o) => IN_CONVERSATION_STAGE_RE.test(stageName(o))).length,
+    open: open.length,
+    noResponse: open.filter((o) => NO_RESPONSE_STAGE_RE.test(stageName(o))).length,
+  };
 }
 
 const AUTOMATED_SOURCES = new Set(["workflow", "bulk_actions", "campaign"]);
@@ -234,14 +259,8 @@ export function stalledOpenOpportunities(
   pipelines: GhlPipeline[],
   thresholdDays = 14
 ): StalledSummary {
-  const { stageIdToName } = buildStageMaps(pipelines);
-  const isClosed = (o: GhlOpportunity) =>
-    o.status === "won" ||
-    o.status === "lost" ||
-    WON_STAGE_RE.test(stageIdToName.get(o.pipelineStageId) || "") ||
-    LOST_STAGE_RE.test(stageIdToName.get(o.pipelineStageId) || "");
-
-  const open = opportunities.filter((o) => !isClosed(o));
+  const { isWon, isLost } = stageClassifier(pipelines);
+  const open = opportunities.filter((o) => !isWon(o) && !isLost(o));
   const now = Date.now();
   let stalledCount = 0;
   let oldestDays: number | null = null;
@@ -293,11 +312,22 @@ export function leadsWeekOverWeek(contacts: GhlContact[]): WeekOverWeek {
 const HERMOSILLO_OFFSET_MS = -7 * 60 * 60 * 1000;
 
 /** Monday 00:00 (Hermosillo time) of the week containing `now`, as a UTC timestamp. */
-function startOfWeek(now: number): number {
+export function startOfWeek(now: number): number {
   const local = new Date(now + HERMOSILLO_OFFSET_MS);
   const daysSinceMonday = (local.getUTCDay() + 6) % 7;
   const localMidnight = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
   return localMidnight - daysSinceMonday * ONE_DAY_MS - HERMOSILLO_OFFSET_MS;
+}
+
+/** The 1st at 00:00 (Hermosillo time) of the month containing `now`, `monthsBack` months earlier. */
+export function startOfMonth(now: number, monthsBack = 0): number {
+  const local = new Date(now + HERMOSILLO_OFFSET_MS);
+  return Date.UTC(local.getUTCFullYear(), local.getUTCMonth() - monthsBack, 1) - HERMOSILLO_OFFSET_MS;
+}
+
+/** Hermosillo calendar date (YYYY-MM-DD) of a timestamp. */
+export function hermosilloDate(t: number): string {
+  return new Date(t + HERMOSILLO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 /**
@@ -309,6 +339,15 @@ export function leadsWeekToDate(contacts: GhlContact[]): WeekOverWeek {
   const now = Date.now();
   const weekStart = startOfWeek(now);
   return countWeekOverWeek(contacts, weekStart, Infinity, weekStart - 7 * ONE_DAY_MS, now - 7 * ONE_DAY_MS);
+}
+
+/** Leads since the 1st of this month vs. the same stretch of last month (capped at last month's end). */
+export function leadsMonthToDate(contacts: GhlContact[]): WeekOverWeek {
+  const now = Date.now();
+  const monthStart = startOfMonth(now);
+  const lastMonthStart = startOfMonth(now, 1);
+  const lastMonthSamePoint = Math.min(lastMonthStart + (now - monthStart), monthStart);
+  return countWeekOverWeek(contacts, monthStart, Infinity, lastMonthStart, lastMonthSamePoint);
 }
 
 const BULK_IMPORT_MIN_SIZE = 20;

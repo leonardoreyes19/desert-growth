@@ -7,6 +7,7 @@ import { formatMinutes } from "@/lib/metrics";
 import type {
   ConversionSummary,
   DayCount,
+  PipelineSnapshot,
   ResponseTimeSummary,
   SourceCount,
   StalledSummary,
@@ -14,9 +15,10 @@ import type {
   WeekOverWeek,
 } from "@/lib/metrics";
 import type { MetaInsights } from "@/lib/meta";
+import type { PipelineHistory } from "@/lib/snapshots";
 import type { Lang } from "@/lib/i18n";
 import { AppHeader, usePrefs, type Dict, type Theme } from "@/components/AppHeader";
-import { StatTile } from "@/components/StatTile";
+import { StatTile, type Comparison } from "@/components/StatTile";
 import { AppFooter } from "@/components/AppFooter";
 import { BarChart } from "@/components/BarChart";
 import { LineChart } from "@/components/LineChart";
@@ -30,6 +32,10 @@ export type DashboardProps = {
   opportunitiesCount: number;
   generatedAtIso: string;
   wow: WeekOverWeek;
+  newLeadsMonth: WeekOverWeek;
+  pipeline: PipelineSnapshot;
+  /** null when a tag filter is active (history covers the whole pipeline). */
+  pipelineHistory: PipelineHistory | null;
   conversion: ConversionSummary;
   responseTime: ResponseTimeSummary;
   bySource: SourceCount[];
@@ -272,6 +278,9 @@ export function Dashboard(props: DashboardProps) {
     opportunitiesCount,
     generatedAtIso,
     wow,
+    newLeadsMonth,
+    pipeline,
+    pipelineHistory,
     conversion,
     responseTime,
     bySource,
@@ -310,6 +319,20 @@ export function Dashboard(props: DashboardProps) {
   const settledSublabel =
     responseTime.settledCount > 0 ? t.overSettledLeads(responseTime.settledCount, trackingSince) : t.notEnoughData;
 
+  const pctChange = (current: number, previous: number) => (previous > 0 ? (current - previous) / previous : null);
+  const vsHistory = (key: keyof PipelineSnapshot, higherIsBetter = true): Comparison[] => {
+    if (!pipelineHistory?.configured) return [];
+    const { lastWeek, lastMonth } = pipelineHistory;
+    return [
+      lastWeek
+        ? { pct: pctChange(pipeline[key], lastWeek[key]), caption: t.vsLastWeekClose(lastWeek[key]), higherIsBetter }
+        : { pct: null, caption: t.noWeekHistory },
+      lastMonth
+        ? { pct: pctChange(pipeline[key], lastMonth[key]), caption: t.vsLastMonthClose(lastMonth[key]), higherIsBetter }
+        : { pct: null, caption: t.noMonthHistory },
+    ];
+  };
+
   const partners = companyName.split("/").map((p) => p.trim());
   const partnershipLine = partners.length === 2 ? t.partnership(partners[0], partners[1]) : companyName;
 
@@ -333,14 +356,39 @@ export function Dashboard(props: DashboardProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
               icon="users" label={t.leadsThisWeek}
+              value={pipeline.inConversation.toLocaleString(locale)}
+              sublabel={t.inConversationSublabel}
+              comparisons={vsHistory("inConversation")}
+            />
+            <StatTile
+              icon="trendUp" label={t.newLeadsThisWeek}
               value={wow.thisWeek.toLocaleString(locale)}
-              delta={wow.deltaPct !== null ? { pct: wow.deltaPct, caption: t.vsLastWeek(wow.lastWeek) } : null}
+              comparisons={[
+                { pct: wow.deltaPct, caption: t.vsLastWeek(wow.lastWeek) },
+                {
+                  pct: newLeadsMonth.deltaPct,
+                  caption: t.thisMonthVsLastMonth(newLeadsMonth.thisWeek, newLeadsMonth.lastWeek),
+                },
+              ]}
             />
             <StatTile
               icon="target" label={t.closeRate}
               value={`${(conversion.winRate * 100).toFixed(0)}%`}
-              sublabel={t.wonOfClosed(conversion.won, conversion.won + conversion.lost)}
+              sublabel={t.wonLostOpen(conversion.won, conversion.lost, conversion.open)}
               accent={conversion.winRate >= 0.4 ? "good" : conversion.winRate > 0 ? "warning" : "neutral"}
+            />
+            <StatTile
+              icon="fileText" label={t.openLeads}
+              value={pipeline.open.toLocaleString(locale)}
+              sublabel={t.openLeadsSublabel}
+              comparisons={vsHistory("open")}
+            />
+            <StatTile
+              icon="hourglass" label={t.noResponseLeads}
+              value={pipeline.noResponse.toLocaleString(locale)}
+              sublabel={t.noResponseLeadsSublabel}
+              comparisons={vsHistory("noResponse", false)}
+              accent="warning"
             />
             <StatTile
               icon="clock" label={t.medianFirstContact}

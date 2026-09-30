@@ -22,9 +22,20 @@ type Dict = {
 
   summary: string;
   leadsThisWeek: string;
+  inConversationSublabel: string;
+  newLeadsThisWeek: string;
+  openLeads: string;
+  openLeadsSublabel: string;
+  noResponseLeads: string;
+  noResponseLeadsSublabel: string;
   vsLastWeek: (n: number) => string;
+  thisMonthVsLastMonth: (n: number, prev: number) => string;
+  vsLastWeekClose: (n: number) => string;
+  vsLastMonthClose: (n: number) => string;
+  noWeekHistory: string;
+  noMonthHistory: string;
   closeRate: string;
-  wonOfClosed: (won: number, closed: number) => string;
+  wonLostOpen: (won: number, lost: number, open: number) => string;
   medianFirstContact: string;
   overLeadsReplied: (n: number) => string;
   overSettledLeads: (n: number, since: string) => string;
@@ -109,9 +120,20 @@ export const dictionaries: Record<Lang, Dict> = {
 
     summary: "Resumen",
     leadsThisWeek: "Leads esta semana",
+    inConversationSublabel: "En conversación: contactados, cotizados y en negociación",
+    newLeadsThisWeek: "Leads nuevos esta semana",
+    openLeads: "Leads abiertos",
+    openLeadsSublabel: "Todo lo que no está ganado ni perdido",
+    noResponseLeads: "Sin respuesta",
+    noResponseLeadsSublabel: "Leads abiertos en la etapa Sin respuesta",
     vsLastWeek: (n) => `vs. ${n} a esta altura la semana pasada`,
+    thisMonthVsLastMonth: (n, prev) => `Este mes ${n} · vs. ${prev} a esta altura el mes pasado`,
+    vsLastWeekClose: (n) => `vs. ${n} al cierre de la semana pasada`,
+    vsLastMonthClose: (n) => `vs. ${n} al cierre del mes pasado`,
+    noWeekHistory: "Semana pasada: sin historial todavía",
+    noMonthHistory: "Mes pasado: sin historial todavía",
     closeRate: "Tasa de cierre",
-    wonOfClosed: (won, closed) => `${won} ganadas de ${closed} cerradas`,
+    wonLostOpen: (won, lost, open) => `${won} ganadas, ${lost} perdidas · ${open} siguen abiertas`,
     medianFirstContact: "Tiempo a primer contacto (mediana)",
     overLeadsReplied: (n) => (n === 1 ? "sobre 1 lead respondido" : `sobre ${n} leads respondidos`),
     overSettledLeads: (n, since) => `de ${n} ${n === 1 ? "lead" : "leads"} de más de 24 h, desde el ${since}`,
@@ -198,9 +220,20 @@ export const dictionaries: Record<Lang, Dict> = {
 
     summary: "Summary",
     leadsThisWeek: "Leads this week",
+    inConversationSublabel: "In conversation: contacted, quoted and negotiating",
+    newLeadsThisWeek: "New leads this week",
+    openLeads: "Open leads",
+    openLeadsSublabel: "Everything not yet won or lost",
+    noResponseLeads: "No response",
+    noResponseLeadsSublabel: "Open leads in the No response stage",
     vsLastWeek: (n) => `vs. ${n} at this point last week`,
+    thisMonthVsLastMonth: (n, prev) => `This month ${n} · vs. ${prev} at this point last month`,
+    vsLastWeekClose: (n) => `vs. ${n} at the close of last week`,
+    vsLastMonthClose: (n) => `vs. ${n} at the close of last month`,
+    noWeekHistory: "Last week: no history yet",
+    noMonthHistory: "Last month: no history yet",
     closeRate: "Close rate",
-    wonOfClosed: (won, closed) => `${won} won of ${closed} closed`,
+    wonLostOpen: (won, lost, open) => `${won} won, ${lost} lost · ${open} still open`,
     medianFirstContact: "Time to first contact (median)",
     overLeadsReplied: (n) => (n === 1 ? "over 1 answered lead" : `over ${n} answered leads`),
     overSettledLeads: (n, since) => `of ${n} ${n === 1 ? "lead" : "leads"} older than 24 h, since ${since}`,

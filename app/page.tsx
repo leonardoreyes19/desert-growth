@@ -9,12 +9,15 @@ import {
   leadsByCity,
   leadsBySource,
   leadsOverTime,
+  leadsMonthToDate,
   leadsWeekToDate,
   opportunitiesByPipeline,
   pipelineByStage,
+  pipelineSnapshot,
   stalledOpenOpportunities,
 } from "@/lib/metrics";
 import { getMetaInsights } from "@/lib/meta";
+import { recordPipelineSnapshot } from "@/lib/snapshots";
 import { isLang, DEFAULT_LANG, type Lang } from "@/lib/i18n";
 import { Dashboard } from "@/components/Dashboard";
 
@@ -62,6 +65,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const conversion = conversionSummary(opportunities, pipelines);
   const responseTime = firstTouchResponseTime(contacts, messages);
   const wow = leadsWeekToDate(contacts);
+  const newLeadsMonth = leadsMonthToDate(contacts);
+  const pipeline = pipelineSnapshot(opportunities, pipelines);
+  // History is for the whole pipeline, so only record/compare it on the unfiltered view.
+  const pipelineHistory = selectedTag ? null : await recordPipelineSnapshot(pipeline);
   const stalled = stalledOpenOpportunities(opportunities, pipelines, 14);
 
   const companyName = process.env.REPORT_COMPANY_NAME || "Nombre de empresa pendiente";
@@ -73,6 +80,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       opportunitiesCount={opportunities.length}
       generatedAtIso={new Date().toISOString()}
       wow={wow}
+      newLeadsMonth={newLeadsMonth}
+      pipeline={pipeline}
+      pipelineHistory={pipelineHistory}
       conversion={conversion}
       responseTime={responseTime}
       bySource={bySource}
