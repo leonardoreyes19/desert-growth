@@ -1,13 +1,13 @@
 import { hermosilloDate, startOfMonth, startOfWeek } from "./metrics";
 
-/** The Resumen's reporting window, picked with the Semana / 2 semanas / Mes filter. */
-export type PeriodKey = "semana" | "2semanas" | "mes";
+/** The Resumen's reporting window, picked with the Semana / Mes filter. */
+export type PeriodKey = "semana" | "mes";
 
-export const PERIOD_KEYS: PeriodKey[] = ["semana", "2semanas", "mes"];
+export const PERIOD_KEYS: PeriodKey[] = ["semana", "mes"];
 export const DEFAULT_PERIOD: PeriodKey = "semana";
 
 export function isPeriodKey(v: string | undefined | null): v is PeriodKey {
-  return v === "semana" || v === "2semanas" || v === "mes";
+  return v === "semana" || v === "mes";
 }
 
 export type PeriodRange = {
@@ -20,22 +20,17 @@ export type PeriodRange = {
   prevSamePoint: number;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * Semana: since Monday. 2 semanas: since last week's Monday. Mes: since the
- * 1st. Each compares against the period right before it, up to the same point.
- */
+/** Semana: since Monday. Mes: since the 1st. Each compares against the period right before it, up to the same point. */
 export function periodRange(key: PeriodKey, now = Date.now()): PeriodRange {
   if (key === "mes") {
     const start = startOfMonth(now);
     const prevStart = startOfMonth(now, 1);
     return { key, start, prevStart, prevSamePoint: Math.min(prevStart + (now - start), start) };
   }
-  const weeks = key === "semana" ? 1 : 2;
-  const start = startOfWeek(now) - (weeks - 1) * 7 * DAY_MS;
-  const length = weeks * 7 * DAY_MS;
-  return { key, start, prevStart: start - length, prevSamePoint: now - length };
+  const start = startOfWeek(now);
+  return { key, start, prevStart: start - WEEK_MS, prevSamePoint: now - WEEK_MS };
 }
 
 /** Hermosillo calendar dates (YYYY-MM-DD) bounding the period, for APIs that take dates. */

@@ -56,7 +56,7 @@ export async function recordPipelineSnapshot(current: PipelineSnapshot): Promise
 /** How the pipeline stood when the previous period closed, i.e. at the start of `range`. */
 export async function pipelineAtPeriodStart(range: PeriodRange): Promise<PipelineHistory> {
   if (!configured()) return { configured: false };
-  // Week and 2-week periods start on a Monday: that's the close of the week before it.
+  // A week period starts on a Monday: that's the close of the week before it.
   const path = range.key === "mes" ? monthPath(range.prevStart) : weekPath(range.start - WEEK_MS);
   try {
     return { configured: true, previous: await read(path, true) };
