@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Leads · Desert Growth" };
 
 type PageProps = {
-  searchParams: Promise<{ stage?: string; line?: string; tag?: string; useCase?: string }>;
+  searchParams: Promise<{ stage?: string; line?: string; tag?: string; useCase?: string; stalled?: string }>;
 };
 
 export default async function LeadsPage({ searchParams }: PageProps) {
@@ -18,6 +18,7 @@ export default async function LeadsPage({ searchParams }: PageProps) {
     line: params.line || null,
     tag: params.tag || null,
     useCase: params.useCase || null,
+    stalled: params.stalled === "1" ? "1" : null,
   };
 
   return (

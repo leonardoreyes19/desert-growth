@@ -252,6 +252,7 @@ export type StalledSummary = {
   stalledCount: number;
   openCount: number;
   oldestDays: number | null;
+  byStage: SourceCount[];
 };
 
 export function stalledOpenOpportunities(
@@ -259,20 +260,26 @@ export function stalledOpenOpportunities(
   pipelines: GhlPipeline[],
   thresholdDays = 14
 ): StalledSummary {
-  const { isWon, isLost } = stageClassifier(pipelines);
+  const { stageName, isWon, isLost } = stageClassifier(pipelines);
   const open = opportunities.filter((o) => !isWon(o) && !isLost(o));
   const now = Date.now();
   let stalledCount = 0;
   let oldestDays: number | null = null;
+  const perStage = new Map<string, number>();
 
   for (const o of open) {
     const changedAt = new Date(o.lastStageChangeAt).getTime();
     const ageDays = (now - changedAt) / 86_400_000;
-    if (ageDays >= thresholdDays) stalledCount++;
+    if (ageDays >= thresholdDays) {
+      stalledCount++;
+      const stage = stageName(o) || "Otra etapa";
+      perStage.set(stage, (perStage.get(stage) || 0) + 1);
+    }
     if (oldestDays === null || ageDays > oldestDays) oldestDays = ageDays;
   }
 
-  return { thresholdDays, stalledCount, openCount: open.length, oldestDays };
+  const byStage = [...perStage.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+  return { thresholdDays, stalledCount, openCount: open.length, oldestDays, byStage };
 }
 
 export type WeekOverWeek = {

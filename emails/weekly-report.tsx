@@ -235,7 +235,7 @@ WeeklyReport.PreviewProps = {
     noReplyIn24h: 1,
   },
   wow: { thisWeek: 10, lastWeek: 8, deltaPct: 0.25 },
-  stalled: { thresholdDays: 14, stalledCount: 146, openCount: 173, oldestDays: 90 },
+  stalled: { thresholdDays: 14, stalledCount: 146, openCount: 173, oldestDays: 90, byStage: [] },
 } satisfies WeeklyReportProps;
 
 export { WeeklyReport };

@@ -81,6 +81,7 @@ type Dict = {
   opportunitiesByStage: string;
   stalledLeads: string;
   stalledSublabel: (open: number, days: number) => string;
+  seeStalledLeads: string;
   opportunitiesByProductLine: string;
   lithiumFootnote: string;
 
@@ -181,6 +182,7 @@ export const dictionaries: Record<Lang, Dict> = {
     opportunitiesByStage: "Oportunidades por etapa (todos los pipelines)",
     stalledLeads: "Leads estancados",
     stalledSublabel: (open, days) => `de ${open} abiertos, sin mover de etapa en ${days}+ días`,
+    seeStalledLeads: "Ver la lista",
     opportunitiesByProductLine: "Oportunidades por línea de producto",
     lithiumFootnote:
       "La etapa “Litio” es una etapa real de su pipeline (no un error de este reporte) — parece usarse para marcar leads interesados específicamente en baterías de litio, no como resultado ganado/perdido.",
@@ -281,6 +283,7 @@ export const dictionaries: Record<Lang, Dict> = {
     opportunitiesByStage: "Opportunities by stage (all pipelines)",
     stalledLeads: "Stalled leads",
     stalledSublabel: (open, days) => `of ${open} open, no stage change in ${days}+ days`,
+    seeStalledLeads: "See the list",
     opportunitiesByProductLine: "Opportunities by product line",
     lithiumFootnote:
       "The “Litio” (Lithium) stage is a real stage in their pipeline (not an error in this report) — it appears to be used to flag leads specifically interested in lithium batteries, not as a won/lost outcome.",

@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { ToggleGroup } from "radix-ui";
 import type { Lang } from "@/lib/i18n";
-import { DEAD_BUCKETS, QUOTED_BUCKETS, type FieldLabels, type LeadNote, type LeadRow } from "@/lib/leads";
+import { DEAD_BUCKETS, QUOTED_BUCKETS, STALLED_DAYS, isStalled, type FieldLabels, type LeadNote, type LeadRow } from "@/lib/leads";
 import { formatMinutes } from "@/lib/metrics";
 import { AppHeader, usePrefs, type Dict, type Theme } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -12,7 +12,14 @@ import { Icon } from "@/components/icons";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/Panel";
 
-export type LeadFilters = { stage: string | null; line: string | null; tag: string | null; useCase: string | null };
+export type LeadFilters = {
+  stage: string | null;
+  line: string | null;
+  tag: string | null;
+  useCase: string | null;
+  /** "1" to show only stalled leads. */
+  stalled: string | null;
+};
 
 export type LeadsViewProps = {
   companyName: string;
@@ -280,7 +287,9 @@ export function LeadsView(props: LeadsViewProps) {
 
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<Sort>({ key: "dateAdded", dir: "desc" });
+  const [sort, setSort] = useState<Sort>(
+    initialFilters.stalled ? { key: "daysInStage", dir: "desc" } : { key: "dateAdded", dir: "desc" }
+  );
   const [openId, setOpenId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, NotesState>>({});
 
@@ -293,7 +302,7 @@ export function LeadsView(props: LeadsViewProps) {
   }
 
   function clearAll() {
-    const next = { stage: null, line: null, tag: null, useCase: null };
+    const next = { stage: null, line: null, tag: null, useCase: null, stalled: null };
     setFilters(next);
     setQuery("");
     syncUrl(next);
@@ -326,8 +335,14 @@ export function LeadsView(props: LeadsViewProps) {
   const tagOptions = useMemo(() => countBy(rows, (r) => r.tags), [rows]);
   const useCaseOptions = useMemo(() => countBy(rows, (r) => r.useCase), [rows]);
 
-  // Everything except the stage filter, so the stage chips can show counts.
-  const baseFiltered = useMemo(() => {
+  function toggleStalled() {
+    const on = !filters.stalled;
+    updateFilter("stalled", on ? "1" : null);
+    if (on) setSort({ key: "daysInStage", dir: "desc" });
+  }
+
+  // Everything except the stage and stalled filters, so their chips can show counts.
+  const unstalledFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (filters.line && r.line !== filters.line) return false;
@@ -344,6 +359,12 @@ export function LeadsView(props: LeadsViewProps) {
     });
   }, [rows, filters.line, filters.tag, filters.useCase, query]);
 
+  const stalledCount = useMemo(() => unstalledFiltered.filter(isStalled).length, [unstalledFiltered]);
+  const baseFiltered = useMemo(
+    () => (filters.stalled ? unstalledFiltered.filter(isStalled) : unstalledFiltered),
+    [unstalledFiltered, filters.stalled]
+  );
+
   const stageCounts = useMemo(() => new Map(countBy(baseFiltered, (r) => (r.stage ? [r.stage] : []))), [baseFiltered]);
 
   const visible = useMemo(
@@ -355,7 +376,7 @@ export function LeadsView(props: LeadsViewProps) {
   const won = visible.filter((r) => r.bucket === "won");
   const cost = visible.reduce((s, r) => s + r.estCost, 0);
   const paidCount = visible.filter((r) => r.estCost > 0).length;
-  const activeCount = [filters.stage, filters.line, filters.tag, filters.useCase, query.trim() || null].filter(Boolean).length;
+  const activeCount = [filters.stage, filters.line, filters.tag, filters.useCase, filters.stalled, query.trim() || null].filter(Boolean).length;
 
   const sortOptions: { value: string; label: string }[] = [
     { value: "dateAdded:desc", label: t.sortNewest },
@@ -452,9 +473,28 @@ export function LeadsView(props: LeadsViewProps) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-              {t.filterStage}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+                {t.filterStage}
+              </span>
+              <button
+                type="button"
+                onClick={toggleStalled}
+                aria-pressed={filters.stalled !== null}
+                className={chipClass}
+                style={
+                  filters.stalled
+                    ? { ...chipStyle(true), background: "var(--status-warning)", border: "1px solid var(--status-warning)" }
+                    : chipStyle(false)
+                }
+              >
+                <Icon name="pause" size={13} />
+                {t.onlyStalled(STALLED_DAYS)}
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] tabular-nums" style={chipCountStyle(filters.stalled !== null)}>
+                  {stalledCount}
+                </span>
+              </button>
+            </div>
             <ToggleGroup.Root
               type="single"
               value={filters.stage ?? ALL}
@@ -583,7 +623,7 @@ export function LeadsView(props: LeadsViewProps) {
               <tbody>
                 {visible.map((r) => {
                   const open = openId === r.id;
-                  const stalled = (r.bucket === "quoted" || r.bucket === "negotiation") && (r.daysInStage ?? 0) >= 14;
+                  const stalled = isStalled(r);
                   return (
                     <Fragment key={r.id}>
                       <tr

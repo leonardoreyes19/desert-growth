@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 
 const ACCENT_COLOR = {
@@ -28,6 +29,7 @@ export function StatTile({
   sublabel,
   delta,
   comparisons = [],
+  action,
   accent = "neutral",
   icon,
 }: {
@@ -37,6 +39,8 @@ export function StatTile({
   delta?: { pct: number; caption: string } | null;
   /** Extra comparison rows (e.g. vs. last week and vs. last month); `pct` null shows the caption alone. */
   comparisons?: Comparison[];
+  /** Link shown at the bottom of the tile, e.g. to the list behind the number. */
+  action?: { href: string; label: string };
   accent?: "neutral" | "good" | "warning";
   icon?: IconName;
 }) {
@@ -108,6 +112,15 @@ export function StatTile({
             </span>
           )}
         </div>
+      )}
+      {action && (
+        <Link
+          href={action.href}
+          className="inline-flex items-center gap-1 text-xs font-semibold self-start rounded outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--series-1)]"
+          style={{ color: "var(--series-1)" }}
+        >
+          {action.label} →
+        </Link>
       )}
     </div>
   );

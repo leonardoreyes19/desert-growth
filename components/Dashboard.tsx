@@ -422,6 +422,8 @@ export function Dashboard(props: DashboardProps) {
               icon="pause" label={t.stalledLeads}
               value={stalled.stalledCount.toLocaleString(locale)}
               sublabel={t.stalledSublabel(stalled.openCount, stalled.thresholdDays)}
+              comparisons={stalled.byStage.map((s) => ({ pct: null, caption: `${s.label}: ${s.value.toLocaleString(locale)}` }))}
+              action={stalled.stalledCount > 0 ? { href: "/leads?stalled=1", label: t.seeStalledLeads } : undefined}
               accent={stalled.stalledCount > 0 ? "warning" : "good"}
             />
           </div>
