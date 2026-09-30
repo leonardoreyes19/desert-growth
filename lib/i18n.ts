@@ -32,8 +32,6 @@ type Dict = {
   thisMonthVsLastMonth: (n: number, prev: number) => string;
   vsLastWeekClose: (n: number) => string;
   vsLastMonthClose: (n: number) => string;
-  noWeekHistory: string;
-  noMonthHistory: string;
   closeRate: string;
   wonLostOpen: (won: number, lost: number, open: number) => string;
   medianFirstContact: string;
@@ -131,8 +129,6 @@ export const dictionaries: Record<Lang, Dict> = {
     thisMonthVsLastMonth: (n, prev) => `Este mes ${n} · vs. ${prev} a esta altura el mes pasado`,
     vsLastWeekClose: (n) => `vs. ${n} al cierre de la semana pasada`,
     vsLastMonthClose: (n) => `vs. ${n} al cierre del mes pasado`,
-    noWeekHistory: "Semana pasada: sin historial todavía",
-    noMonthHistory: "Mes pasado: sin historial todavía",
     closeRate: "Tasa de cierre",
     wonLostOpen: (won, lost, open) => `${won} ganadas, ${lost} perdidas · ${open} siguen abiertas`,
     medianFirstContact: "Tiempo a primer contacto (mediana)",
@@ -232,8 +228,6 @@ export const dictionaries: Record<Lang, Dict> = {
     thisMonthVsLastMonth: (n, prev) => `This month ${n} · vs. ${prev} at this point last month`,
     vsLastWeekClose: (n) => `vs. ${n} at the close of last week`,
     vsLastMonthClose: (n) => `vs. ${n} at the close of last month`,
-    noWeekHistory: "Last week: no history yet",
-    noMonthHistory: "Last month: no history yet",
     closeRate: "Close rate",
     wonLostOpen: (won, lost, open) => `${won} won, ${lost} lost · ${open} still open`,
     medianFirstContact: "Time to first contact (median)",

@@ -329,14 +329,10 @@ export function Dashboard(props: DashboardProps) {
   const vsHistory = (key: keyof PipelineSnapshot, higherIsBetter = true): Comparison[] => {
     if (!pipelineHistory?.configured) return [];
     const { lastWeek, lastMonth } = pipelineHistory;
-    return [
-      lastWeek
-        ? { pct: pctChange(pipeline[key], lastWeek[key]), caption: t.vsLastWeekClose(lastWeek[key]), higherIsBetter }
-        : { pct: null, caption: t.noWeekHistory },
-      lastMonth
-        ? { pct: pctChange(pipeline[key], lastMonth[key]), caption: t.vsLastMonthClose(lastMonth[key]), higherIsBetter }
-        : { pct: null, caption: t.noMonthHistory },
-    ];
+    const rows: Comparison[] = [];
+    if (lastWeek) rows.push({ pct: pctChange(pipeline[key], lastWeek[key]), caption: t.vsLastWeekClose(lastWeek[key]), higherIsBetter });
+    if (lastMonth) rows.push({ pct: pctChange(pipeline[key], lastMonth[key]), caption: t.vsLastMonthClose(lastMonth[key]), higherIsBetter });
+    return rows;
   };
 
   const partners = companyName.split("/").map((p) => p.trim());
