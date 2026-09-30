@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ToggleGroup } from "radix-ui";
 import { formatMinutes } from "@/lib/metrics";
@@ -302,9 +302,15 @@ export function Dashboard(props: DashboardProps) {
   const pathname = usePathname();
   const metaOk = meta.configured && meta.error === undefined ? meta : null;
 
+  // The tag filter re-renders on the server; show the new chip right away and dim the numbers until it lands.
+  const [isFiltering, startFiltering] = useTransition();
+  const [requestedTag, setRequestedTag] = useState<string | null>(selectedTag);
+  const shownTag = isFiltering ? requestedTag : selectedTag;
+
   function changeTag(tag: string | null) {
     const query = tag ? `?tag=${encodeURIComponent(tag)}` : "";
-    router.push(`${pathname}${query}`);
+    setRequestedTag(tag);
+    startFiltering(() => router.push(`${pathname}${query}`));
   }
 
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
@@ -345,11 +351,15 @@ export function Dashboard(props: DashboardProps) {
         generatedAtIso={generatedAtIso}
         prefs={prefs}
       />
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1">
+      <main
+        className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1 transition-opacity"
+        style={{ opacity: isFiltering ? 0.55 : 1, cursor: isFiltering ? "progress" : undefined }}
+        aria-busy={isFiltering}
+      >
 
         <SourceGroup title={t.crmGroupTitle} subtitle={t.crmGroupSubtitle} accent="var(--series-1)">
         {availableTags.length > 0 && (
-          <TagFilter tags={availableTags} selected={selectedTag} onChange={changeTag} label={t.tagFilterLabel} allLabel={t.allLeads} />
+          <TagFilter tags={availableTags} selected={shownTag} onChange={changeTag} label={t.tagFilterLabel} allLabel={t.allLeads} />
         )}
         <section>
           <SectionLabel>{t.summary}</SectionLabel>

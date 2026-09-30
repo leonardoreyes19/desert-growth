@@ -1,4 +1,5 @@
 import "server-only";
+import { cached } from "./server-cache";
 
 const BASE_URL = "https://services.leadconnectorhq.com";
 const API_VERSION = "2021-07-28";
@@ -62,7 +63,7 @@ type ContactsResponse = {
   meta: { nextPage?: number; startAfter?: number; startAfterId?: string; total: number };
 };
 
-export async function getAllContacts(locationId: string): Promise<GhlContact[]> {
+async function fetchAllContacts(locationId: string): Promise<GhlContact[]> {
   const all: GhlContact[] = [];
   let startAfter: number | undefined;
   let startAfterId: string | undefined;
@@ -77,6 +78,10 @@ export async function getAllContacts(locationId: string): Promise<GhlContact[]> 
     startAfterId = data.meta.startAfterId;
   }
   return all;
+}
+
+export function getAllContacts(locationId: string): Promise<GhlContact[]> {
+  return cached(`ghl:contacts:${locationId}`, () => fetchAllContacts(locationId));
 }
 
 export type GhlOpportunity = {
@@ -101,7 +106,7 @@ type OpportunitiesResponse = {
   meta: { nextPage?: number; startAfter?: number; startAfterId?: string; total: number };
 };
 
-export async function getAllOpportunities(locationId: string): Promise<GhlOpportunity[]> {
+async function fetchAllOpportunities(locationId: string): Promise<GhlOpportunity[]> {
   const all: GhlOpportunity[] = [];
   let startAfter: number | undefined;
   let startAfterId: string | undefined;
@@ -118,6 +123,10 @@ export async function getAllOpportunities(locationId: string): Promise<GhlOpport
   return all;
 }
 
+export function getAllOpportunities(locationId: string): Promise<GhlOpportunity[]> {
+  return cached(`ghl:opportunities:${locationId}`, () => fetchAllOpportunities(locationId));
+}
+
 export type GhlPipelineStage = {
   id: string;
   name: string;
@@ -130,9 +139,13 @@ export type GhlPipeline = {
   stages: GhlPipelineStage[];
 };
 
-export async function getPipelines(locationId: string): Promise<GhlPipeline[]> {
+async function fetchPipelines(locationId: string): Promise<GhlPipeline[]> {
   const data = await ghlGet<{ pipelines: GhlPipeline[] }>("/opportunities/pipelines", { locationId });
   return data.pipelines;
+}
+
+export function getPipelines(locationId: string): Promise<GhlPipeline[]> {
+  return cached(`ghl:pipelines:${locationId}`, () => fetchPipelines(locationId));
 }
 
 export type GhlMessage = {
@@ -154,7 +167,7 @@ type MessagesExportResponse = {
 const MESSAGE_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Facebook", "Instagram"];
 
 /** Every message in the location, across all channels the export endpoint supports. */
-export async function getAllMessages(locationId: string): Promise<GhlMessage[]> {
+async function fetchAllMessages(locationId: string): Promise<GhlMessage[]> {
   const perChannel = await Promise.all(
     MESSAGE_CHANNELS.map(async (channel) => {
       const all: GhlMessage[] = [];
@@ -173,6 +186,10 @@ export async function getAllMessages(locationId: string): Promise<GhlMessage[]> 
   return perChannel.flat();
 }
 
+export function getAllMessages(locationId: string): Promise<GhlMessage[]> {
+  return cached(`ghl:messages:${locationId}`, () => fetchAllMessages(locationId));
+}
+
 export type GhlCustomFieldDef = {
   id: string;
   name: string;
@@ -183,13 +200,17 @@ export type GhlCustomFieldDef = {
  * integration token. Returns null (instead of throwing) when the token lacks
  * it, so callers can fall back to known labels.
  */
-export async function getCustomFieldDefs(locationId: string): Promise<GhlCustomFieldDef[] | null> {
+async function fetchCustomFieldDefs(locationId: string): Promise<GhlCustomFieldDef[] | null> {
   try {
     const data = await ghlGet<{ customFields: GhlCustomFieldDef[] }>(`/locations/${locationId}/customFields`, {});
     return data.customFields;
   } catch {
     return null;
   }
+}
+
+export function getCustomFieldDefs(locationId: string): Promise<GhlCustomFieldDef[] | null> {
+  return cached(`ghl:customFields:${locationId}`, () => fetchCustomFieldDefs(locationId));
 }
 
 export type GhlNote = {

@@ -1,4 +1,5 @@
 import "server-only";
+import { cached } from "./server-cache";
 
 /**
  * Meta (Facebook/Instagram) Ads Insights — spend & performance KPIs.
@@ -166,7 +167,7 @@ function computeWeekOverWeek(byDay: MetaDayKpi[]): MetaWeekOverWeek {
   };
 }
 
-export async function getMetaInsights(): Promise<MetaInsights> {
+async function fetchMetaInsights(): Promise<MetaInsights> {
   const token = process.env.META_ACCESS_TOKEN?.trim();
   const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
   if (!token || !rawAccount) return { configured: false };
@@ -265,7 +266,7 @@ export type MetaLifetimeSpend =
  * real cost per lead / quote / sale against CRM outcomes. Same fail-safe
  * contract as getMetaInsights().
  */
-export async function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
+async function fetchMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
   const token = process.env.META_ACCESS_TOKEN?.trim();
   const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
   if (!token || !rawAccount) return { configured: false };
@@ -295,4 +296,16 @@ export async function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaL
   } catch (err) {
     return { configured: true, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+// Meta errors come back as values, not exceptions — don't hold on to them.
+const keepUnlessError = (r: { configured: boolean; error?: string }) => !(r.configured && r.error !== undefined);
+
+export function getMetaInsights(): Promise<MetaInsights> {
+  return cached("meta:insights", fetchMetaInsights, { keep: keepUnlessError });
+}
+
+export function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
+  const key = `meta:lifetime:${[...campaignIds].sort().join(",")}`;
+  return cached(key, () => fetchMetaLifetimeSpend(campaignIds), { keep: keepUnlessError });
 }
