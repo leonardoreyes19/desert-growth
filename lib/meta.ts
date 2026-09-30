@@ -13,7 +13,6 @@ import { cached } from "./server-cache";
  *   META_ACCESS_TOKEN      System User / long-lived token with `ads_read`.
  *   META_AD_ACCOUNT_ID     Ad account id, with or without the `act_` prefix.
  *   META_API_VERSION       Graph API version (default v21.0).
- *   META_DATE_PRESET       Reporting window (default last_30d).
  *   META_LEAD_ACTION_TYPE  Optional exact action_type to count as "lead"
  *                          (e.g. offsite_conversion.custom.<id> for the
  *                          "Marina – Lead" custom conversion). If unset, any
@@ -21,7 +20,6 @@ import { cached } from "./server-cache";
  */
 
 const DEFAULT_VERSION = "v21.0";
-const DEFAULT_PRESET = "last_30d";
 
 type MetaAction = { action_type: string; value: string };
 
@@ -65,16 +63,10 @@ export type MetaSegmentKpi = {
   cpl: number | null;
 };
 
-export type MetaWeekOverWeek = {
-  thisWeekSpend: number;
-  lastWeekSpend: number;
-  spendDeltaPct: number | null;
-  thisWeekLeads: number;
-  lastWeekLeads: number;
-  leadsDeltaPct: number | null;
-  cplThisWeek: number | null;
-  cplLastWeek: number | null;
-};
+/** Reporting window as Hermosillo dates: the current period and the previous one up to the same point. */
+export type MetaDates = { since: string; until: string; prevSince: string; prevUntil: string };
+
+export type MetaPrevious = { spend: number; leads: number; cpl: number | null; ctr: number | null };
 
 export type MetaInsights =
   | { configured: false }
@@ -83,7 +75,6 @@ export type MetaInsights =
       configured: true;
       error?: undefined;
       currency: string;
-      datePreset: string;
       spend: number;
       impressions: number;
       reach: number;
@@ -94,10 +85,11 @@ export type MetaInsights =
       leads: number;
       cpl: number | null;
       byCampaign: MetaCampaignKpi[];
+      /** Both periods, prevSince through until, for the daily trend. */
       byDay: MetaDayKpi[];
       byDemographic: MetaSegmentKpi[];
       byPlacement: MetaSegmentKpi[];
-      weekOverWeek: MetaWeekOverWeek;
+      previous: MetaPrevious;
     };
 
 const num = (v: string | undefined): number => {
@@ -143,49 +135,26 @@ function aggregateBySegment(rows: InsightRow[], segmentOf: (r: InsightRow) => st
     .sort((a, b) => b.spend - a.spend);
 }
 
-function computeWeekOverWeek(byDay: MetaDayKpi[]): MetaWeekOverWeek {
-  const sorted = [...byDay].sort((a, b) => a.date.localeCompare(b.date));
-  const last7 = sorted.slice(-7);
-  const prev7 = sorted.slice(-14, -7);
-
-  const sum = (days: MetaDayKpi[], key: "spend" | "leads") => days.reduce((s, d) => s + d[key], 0);
-
-  const thisWeekSpend = sum(last7, "spend");
-  const lastWeekSpend = sum(prev7, "spend");
-  const thisWeekLeads = sum(last7, "leads");
-  const lastWeekLeads = sum(prev7, "leads");
-
-  return {
-    thisWeekSpend,
-    lastWeekSpend,
-    spendDeltaPct: lastWeekSpend > 0 ? (thisWeekSpend - lastWeekSpend) / lastWeekSpend : null,
-    thisWeekLeads,
-    lastWeekLeads,
-    leadsDeltaPct: lastWeekLeads > 0 ? (thisWeekLeads - lastWeekLeads) / lastWeekLeads : null,
-    cplThisWeek: thisWeekLeads > 0 ? thisWeekSpend / thisWeekLeads : null,
-    cplLastWeek: lastWeekLeads > 0 ? lastWeekSpend / lastWeekLeads : null,
-  };
-}
-
-async function fetchMetaInsights(): Promise<MetaInsights> {
+async function fetchMetaInsights(dates: MetaDates): Promise<MetaInsights> {
   const token = process.env.META_ACCESS_TOKEN?.trim();
   const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
   if (!token || !rawAccount) return { configured: false };
 
   const account = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
-  const datePreset = process.env.META_DATE_PRESET?.trim() || DEFAULT_PRESET;
+  const period = { time_range: JSON.stringify({ since: dates.since, until: dates.until }) };
+  const bothPeriods = { time_range: JSON.stringify({ since: dates.prevSince, until: dates.until }) };
   const baseFields = "campaign_name,account_currency,spend,impressions,reach,clicks,ctr,cpc,cpm,actions";
-  const dayFields = "spend,actions";
+  const dayFields = "spend,impressions,clicks,actions";
   const segmentFields = "spend,actions";
 
   try {
     const [summaryRows, campaignRows, dayRows, demographicRows, placementRows] = await Promise.all([
-      graphGet(`${account}/insights`, { date_preset: datePreset, fields: baseFields, level: "account" }),
-      graphGet(`${account}/insights`, { date_preset: datePreset, fields: baseFields, level: "campaign", limit: "200" }),
-      graphGet(`${account}/insights`, { date_preset: datePreset, fields: dayFields, level: "account", time_increment: "1" }),
-      graphGet(`${account}/insights`, { date_preset: datePreset, fields: segmentFields, level: "account", breakdowns: "age,gender" }),
+      graphGet(`${account}/insights`, { ...period, fields: baseFields, level: "account" }),
+      graphGet(`${account}/insights`, { ...period, fields: baseFields, level: "campaign", limit: "200" }),
+      graphGet(`${account}/insights`, { ...bothPeriods, fields: dayFields, level: "account", time_increment: "1" }),
+      graphGet(`${account}/insights`, { ...period, fields: segmentFields, level: "account", breakdowns: "age,gender" }),
       graphGet(`${account}/insights`, {
-        date_preset: datePreset,
+        ...period,
         fields: segmentFields,
         level: "account",
         breakdowns: "publisher_platform,platform_position",
@@ -216,6 +185,12 @@ async function fetchMetaInsights(): Promise<MetaInsights> {
       .filter((d) => d.date)
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    const prevRows = dayRows.filter((r) => r.date_start && r.date_start >= dates.prevSince && r.date_start <= dates.prevUntil);
+    const prevSpend = prevRows.reduce((sum, r) => sum + num(r.spend), 0);
+    const prevLeads = prevRows.reduce((sum, r) => sum + countLeads(r.actions), 0);
+    const prevImpressions = prevRows.reduce((sum, r) => sum + num(r.impressions), 0);
+    const prevClicks = prevRows.reduce((sum, r) => sum + num(r.clicks), 0);
+
     const byDemographic = aggregateBySegment(demographicRows, (r) => `${r.age || "unknown"}|${r.gender || "unknown"}`);
 
     const byPlacement = aggregateBySegment(
@@ -226,7 +201,6 @@ async function fetchMetaInsights(): Promise<MetaInsights> {
     return {
       configured: true,
       currency: s.account_currency || "MXN",
-      datePreset,
       spend,
       impressions: num(s.impressions),
       reach: num(s.reach),
@@ -240,7 +214,12 @@ async function fetchMetaInsights(): Promise<MetaInsights> {
       byDay,
       byDemographic,
       byPlacement,
-      weekOverWeek: computeWeekOverWeek(byDay),
+      previous: {
+        spend: prevSpend,
+        leads: prevLeads,
+        cpl: prevLeads > 0 ? prevSpend / prevLeads : null,
+        ctr: prevImpressions > 0 ? (prevClicks / prevImpressions) * 100 : null,
+      },
     };
   } catch (err) {
     return { configured: true, error: err instanceof Error ? err.message : String(err) };
@@ -301,8 +280,9 @@ async function fetchMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifeti
 // Meta errors come back as values, not exceptions — don't hold on to them.
 const keepUnlessError = (r: { configured: boolean; error?: string }) => !(r.configured && r.error !== undefined);
 
-export function getMetaInsights(): Promise<MetaInsights> {
-  return cached("meta:insights", fetchMetaInsights, { keep: keepUnlessError });
+export function getMetaInsights(dates: MetaDates): Promise<MetaInsights> {
+  const key = `meta:insights:${dates.prevSince}:${dates.prevUntil}:${dates.since}:${dates.until}`;
+  return cached(key, () => fetchMetaInsights(dates), { keep: keepUnlessError });
 }
 
 export function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {

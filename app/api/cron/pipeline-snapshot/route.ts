@@ -26,8 +26,7 @@ export async function GET(req: NextRequest) {
 
   const [opportunities, pipelines] = await Promise.all([getAllOpportunities(locationId), getPipelines(locationId)]);
   const snapshot = pipelineSnapshot(opportunities, pipelines);
-  const history = await recordPipelineSnapshot(snapshot);
-  if (!history.configured) return NextResponse.json({ error: "Blob store is not configured" }, { status: 500 });
-  if (history.error) return NextResponse.json({ error: history.error }, { status: 500 });
+  const error = await recordPipelineSnapshot(snapshot);
+  if (error) return NextResponse.json({ error }, { status: 500 });
   return NextResponse.json({ ok: true, snapshot });
 }

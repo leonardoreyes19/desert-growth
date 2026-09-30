@@ -71,19 +71,20 @@ export function opportunitiesByPipeline(opportunities: GhlOpportunity[], pipelin
 
 export type DayCount = { date: string; value: number };
 
-export function leadsOverTime(contacts: GhlContact[], days = 30): DayCount[] {
+/** New leads per Hermosillo calendar day, from `from` through today. */
+export function leadsOverTime(contacts: GhlContact[], from: number): DayCount[] {
   const buckets = new Map<string, number>();
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() - i);
-    buckets.set(d.toISOString().slice(0, 10), 0);
-  }
+  const today = hermosilloDate(Date.now());
+  for (let t = from; hermosilloDate(t) <= today; t += ONE_DAY_MS) buckets.set(hermosilloDate(t), 0);
   for (const c of contacts) {
-    const key = new Date(c.dateAdded).toISOString().slice(0, 10);
+    const key = hermosilloDate(new Date(c.dateAdded).getTime());
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
   }
   return [...buckets.entries()].map(([date, value]) => ({ date, value }));
+}
+
+export function contactsSince(contacts: GhlContact[], from: number): GhlContact[] {
+  return contacts.filter((c) => new Date(c.dateAdded).getTime() >= from);
 }
 
 export type StageCount = { label: string; value: number; position: number };
@@ -120,11 +121,18 @@ export function pipelineByStage(opportunities: GhlOpportunity[], pipelines: GhlP
     .sort((a, b) => a.position - b.position);
 }
 
+/** Won / lost / open for one opportunity, from its stage name and status. */
+export function stageOutcome(stageName: string, status: string): "won" | "lost" | "open" {
+  if (status === "won" || WON_STAGE_RE.test(stageName)) return "won";
+  if (status === "lost" || LOST_STAGE_RE.test(stageName)) return "lost";
+  return "open";
+}
+
 function stageClassifier(pipelines: GhlPipeline[]) {
   const { stageIdToName } = buildStageMaps(pipelines);
   const stageName = (o: GhlOpportunity) => stageIdToName.get(o.pipelineStageId) || "";
-  const isWon = (o: GhlOpportunity) => o.status === "won" || WON_STAGE_RE.test(stageName(o));
-  const isLost = (o: GhlOpportunity) => !isWon(o) && (o.status === "lost" || LOST_STAGE_RE.test(stageName(o)));
+  const isWon = (o: GhlOpportunity) => stageOutcome(stageName(o), o.status) === "won";
+  const isLost = (o: GhlOpportunity) => stageOutcome(stageName(o), o.status) === "lost";
   return { stageName, isWon, isLost };
 }
 
@@ -150,6 +158,30 @@ export function conversionSummary(opportunities: GhlOpportunity[], pipelines: Gh
   return { total, won, lost, open, winRate: closed > 0 ? won / closed : 0 };
 }
 
+export type PeriodConversion = { won: number; lost: number; winRate: number | null };
+
+/**
+ * Deals won or lost within [from, to) — dated by the opportunity's last stage
+ * or status change, whichever came later (that's when it was closed).
+ */
+export function conversionBetween(
+  opportunities: GhlOpportunity[],
+  pipelines: GhlPipeline[],
+  from: number,
+  to: number
+): PeriodConversion {
+  const { isWon, isLost } = stageClassifier(pipelines);
+  let won = 0;
+  let lost = 0;
+  for (const o of opportunities) {
+    const closedAt = Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
+    if (closedAt < from || closedAt >= to) continue;
+    if (isWon(o)) won++;
+    else if (isLost(o)) lost++;
+  }
+  return { won, lost, winRate: won + lost > 0 ? won / (won + lost) : null };
+}
+
 const IN_CONVERSATION_STAGE_RE = /contactad|cotizaci|negociaci/i;
 const NO_RESPONSE_STAGE_RE = /sin respuesta/i;
 const QUOTED_STAGE_RE = /cotizaci/i;
@@ -162,14 +194,19 @@ export type PipelineSnapshot = {
   noResponse: number;
 };
 
-export function pipelineSnapshot(opportunities: GhlOpportunity[], pipelines: GhlPipeline[]): PipelineSnapshot {
-  const { stageName, isWon, isLost } = stageClassifier(pipelines);
-  const open = opportunities.filter((o) => !isWon(o) && !isLost(o));
+/** Pipeline counts from each opportunity's stage name and status (shared with the history backfill). */
+export function snapshotFromStages(opps: { stageName: string; status: string }[]): PipelineSnapshot {
+  const open = opps.filter((o) => stageOutcome(o.stageName, o.status) === "open");
   return {
-    inConversation: open.filter((o) => IN_CONVERSATION_STAGE_RE.test(stageName(o))).length,
+    inConversation: open.filter((o) => IN_CONVERSATION_STAGE_RE.test(o.stageName)).length,
     open: open.length,
-    noResponse: open.filter((o) => NO_RESPONSE_STAGE_RE.test(stageName(o))).length,
+    noResponse: open.filter((o) => NO_RESPONSE_STAGE_RE.test(o.stageName)).length,
   };
+}
+
+export function pipelineSnapshot(opportunities: GhlOpportunity[], pipelines: GhlPipeline[]): PipelineSnapshot {
+  const { stageName } = stageClassifier(pipelines);
+  return snapshotFromStages(opportunities.map((o) => ({ stageName: stageName(o), status: o.status })));
 }
 
 const AUTOMATED_SOURCES = new Set(["workflow", "bulk_actions", "campaign"]);
@@ -209,8 +246,9 @@ export type ResponseTimeSummary = {
   noReplyIn24h: number;
 };
 
-export function firstTouchResponseTime(contacts: GhlContact[], messages: GhlMessage[]): ResponseTimeSummary {
-  const since = new Date(RESPONSE_TRACKING_SINCE).getTime();
+/** Response speed for leads that arrived since `from` (never earlier than RESPONSE_TRACKING_SINCE). */
+export function firstTouchResponseTime(contacts: GhlContact[], messages: GhlMessage[], from = 0): ResponseTimeSummary {
+  const since = Math.max(from, new Date(RESPONSE_TRACKING_SINCE).getTime());
   const now = Date.now();
   const tracked = contacts.filter((c) => new Date(c.dateAdded).getTime() >= since);
   const firstReply = firstHumanReplyByContact(tracked, messages);
@@ -238,7 +276,7 @@ export function firstTouchResponseTime(contacts: GhlContact[], messages: GhlMess
     sorted.length === 0 ? null : sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 
   return {
-    trackingSince: RESPONSE_TRACKING_SINCE,
+    trackingSince: new Date(since).toISOString(),
     medianMinutes,
     repliedCount: sorted.length,
     settledCount,
@@ -339,24 +377,12 @@ export function hermosilloDate(t: number): string {
   return new Date(t + HERMOSILLO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-/**
- * Leads since Monday 00:00 (Hermosillo) vs. the same stretch of last week
- * (Monday 00:00 up to this same weekday and hour), so the comparison is fair
- * mid-week instead of pitting a partial week against a full one.
- */
-export function leadsWeekToDate(contacts: GhlContact[]): WeekOverWeek {
-  const now = Date.now();
-  const weekStart = startOfWeek(now);
-  return countWeekOverWeek(contacts, weekStart, Infinity, weekStart - 7 * ONE_DAY_MS, now - 7 * ONE_DAY_MS);
-}
-
-/** Leads since the 1st of this month vs. the same stretch of last month (capped at last month's end). */
-export function leadsMonthToDate(contacts: GhlContact[]): WeekOverWeek {
-  const now = Date.now();
-  const monthStart = startOfMonth(now);
-  const lastMonthStart = startOfMonth(now, 1);
-  const lastMonthSamePoint = Math.min(lastMonthStart + (now - monthStart), monthStart);
-  return countWeekOverWeek(contacts, monthStart, Infinity, lastMonthStart, lastMonthSamePoint);
+/** New leads since `start` vs. the previous period from `prevStart` up to the same elapsed point. */
+export function leadsInPeriod(
+  contacts: GhlContact[],
+  range: { start: number; prevStart: number; prevSamePoint: number }
+): WeekOverWeek {
+  return countWeekOverWeek(contacts, range.start, Infinity, range.prevStart, range.prevSamePoint);
 }
 
 const BULK_IMPORT_MIN_SIZE = 20;

@@ -1,4 +1,5 @@
 import { extraDictionaries, type ExtraDict } from "./i18n-extra";
+import type { PeriodKey } from "./periods";
 
 export type Lang = "es" | "en";
 
@@ -21,19 +22,24 @@ type Dict = {
   contactsAndOpportunities: (contacts: number, opportunities: number) => string;
 
   summary: string;
-  leadsThisWeek: string;
   inConversationSublabel: string;
-  newLeadsThisWeek: string;
   openLeads: string;
   openLeadsSublabel: string;
   noResponseLeads: string;
   noResponseLeadsSublabel: string;
-  vsLastWeek: (n: number) => string;
-  thisMonthVsLastMonth: (n: number, prev: number) => string;
-  vsLastWeekClose: (n: number) => string;
-  vsLastMonthClose: (n: number) => string;
+  periodLabel: string;
+  periodOption: Record<PeriodKey, string>;
+  periodRangeCaption: (since: string) => string;
+  leadsInPeriod: Record<PeriodKey, string>;
+  newLeadsInPeriod: Record<PeriodKey, string>;
+  vsPrevSamePoint: (period: PeriodKey, value: string) => string;
+  vsPrevClose: (period: PeriodKey, value: string) => string;
+  closedInPeriod: (won: number, lost: number, open: number) => string;
+  noneClosedInPeriod: (open: number) => string;
+  currentStateNote: string;
+  newLeadsPerDay: string;
+  metaSpend: string;
   closeRate: string;
-  wonLostOpen: (won: number, lost: number, open: number) => string;
   medianFirstContact: string;
   overLeadsReplied: (n: number) => string;
   overSettledLeads: (n: number, since: string) => string;
@@ -42,7 +48,6 @@ type Dict = {
   advertisingMetaAds: string;
   metaNotConfigured: string;
   metaError: (msg: string) => string;
-  metaSpend30d: string;
   metaCpl: string;
   metaLeadsReported: (n: string) => string;
   metaCtr: string;
@@ -62,17 +67,12 @@ type Dict = {
   metaLeadsPerDay: string;
   metaByDemographic: string;
   metaByPlacement: string;
-  metaWeekOverWeek: string;
-  metaSpendThisWeek: string;
-  metaCplThisWeek: string;
-  vsLastWeekAmount: (n: string) => string;
   genderMale: string;
   genderFemale: string;
   genderUnknown: string;
 
   leadAcquisition: string;
   leadsBySourceCampaign: string;
-  newLeadsPerDay: string;
   leadsByCity: string;
 
   salesPipeline: string;
@@ -118,19 +118,26 @@ export const dictionaries: Record<Lang, Dict> = {
       `${contacts} contactos · ${opportunities} oportunidades`,
 
     summary: "Resumen",
-    leadsThisWeek: "Leads esta semana",
     inConversationSublabel: "En conversación: contactados, cotizados y en negociación",
-    newLeadsThisWeek: "Leads nuevos esta semana",
     openLeads: "Leads abiertos",
     openLeadsSublabel: "Todo lo que no está ganado ni perdido",
     noResponseLeads: "Sin respuesta",
     noResponseLeadsSublabel: "Leads abiertos en la etapa Sin respuesta",
-    vsLastWeek: (n) => `vs. ${n} a esta altura la semana pasada`,
-    thisMonthVsLastMonth: (n, prev) => `Este mes ${n} · vs. ${prev} a esta altura el mes pasado`,
-    vsLastWeekClose: (n) => `vs. ${n} al cierre de la semana pasada`,
-    vsLastMonthClose: (n) => `vs. ${n} al cierre del mes pasado`,
+    periodLabel: "Periodo",
+    periodOption: { semana: "Semana", "2semanas": "2 semanas", mes: "Mes" },
+    periodRangeCaption: (since) => `Del ${since} a hoy`,
+    leadsInPeriod: { semana: "Leads esta semana", "2semanas": "Leads estas 2 semanas", mes: "Leads este mes" },
+    newLeadsInPeriod: { semana: "Leads nuevos esta semana", "2semanas": "Leads nuevos estas 2 semanas", mes: "Leads nuevos este mes" },
+    vsPrevSamePoint: (period, value) =>
+      `vs. ${value} a esta altura ${{ semana: "de la semana pasada", "2semanas": "de las 2 semanas anteriores", mes: "del mes pasado" }[period]}`,
+    vsPrevClose: (period, value) =>
+      `vs. ${value} ${{ semana: "al cierre de la semana pasada", "2semanas": "hace 2 semanas", mes: "al cierre del mes pasado" }[period]}`,
+    closedInPeriod: (won, lost, open) => `${won} ganadas, ${lost} perdidas en el periodo · ${open} siguen abiertas`,
+    noneClosedInPeriod: (open) => `Ninguna ganada ni perdida en el periodo · ${open} siguen abiertas`,
+    currentStateNote: "Estado actual del pipeline; no depende del periodo.",
+    newLeadsPerDay: "Leads nuevos por día (este periodo y el anterior)",
+    metaSpend: "Inversión",
     closeRate: "Tasa de cierre",
-    wonLostOpen: (won, lost, open) => `${won} ganadas, ${lost} perdidas · ${open} siguen abiertas`,
     medianFirstContact: "Tiempo a primer contacto (mediana)",
     overLeadsReplied: (n) => (n === 1 ? "sobre 1 lead respondido" : `sobre ${n} leads respondidos`),
     overSettledLeads: (n, since) => `de ${n} ${n === 1 ? "lead" : "leads"} de más de 24 h, desde el ${since}`,
@@ -140,7 +147,6 @@ export const dictionaries: Record<Lang, Dict> = {
     metaNotConfigured:
       "Conecta Meta Ads (variables META_ACCESS_TOKEN y META_AD_ACCOUNT_ID) para ver inversión, costo por lead y rendimiento por campaña aquí.",
     metaError: (msg) => `No se pudieron leer los datos de Meta Ads: ${msg}`,
-    metaSpend30d: "Inversión (30 días)",
     metaCpl: "Costo por lead",
     metaLeadsReported: (n) => `${n} leads reportados por Meta`,
     metaCtr: "CTR",
@@ -161,17 +167,12 @@ export const dictionaries: Record<Lang, Dict> = {
     metaLeadsPerDay: "Leads por día",
     metaByDemographic: "Por edad y género",
     metaByPlacement: "Por ubicación del anuncio",
-    metaWeekOverWeek: "Esta semana vs. anterior",
-    metaSpendThisWeek: "Inversión esta semana",
-    metaCplThisWeek: "CPL esta semana",
-    vsLastWeekAmount: (n) => `vs. ${n} la semana anterior`,
     genderMale: "Hombre",
     genderFemale: "Mujer",
     genderUnknown: "Desconocido",
 
     leadAcquisition: "Adquisición de leads",
     leadsBySourceCampaign: "Leads por fuente / campaña",
-    newLeadsPerDay: "Leads nuevos por día (últimos 30 días)",
     leadsByCity: "Leads por ciudad",
 
     salesPipeline: "Pipeline de ventas",
@@ -217,19 +218,26 @@ export const dictionaries: Record<Lang, Dict> = {
       `${contacts} contacts · ${opportunities} opportunities`,
 
     summary: "Summary",
-    leadsThisWeek: "Leads this week",
     inConversationSublabel: "In conversation: contacted, quoted and negotiating",
-    newLeadsThisWeek: "New leads this week",
     openLeads: "Open leads",
     openLeadsSublabel: "Everything not yet won or lost",
     noResponseLeads: "No response",
     noResponseLeadsSublabel: "Open leads in the No response stage",
-    vsLastWeek: (n) => `vs. ${n} at this point last week`,
-    thisMonthVsLastMonth: (n, prev) => `This month ${n} · vs. ${prev} at this point last month`,
-    vsLastWeekClose: (n) => `vs. ${n} at the close of last week`,
-    vsLastMonthClose: (n) => `vs. ${n} at the close of last month`,
+    periodLabel: "Period",
+    periodOption: { semana: "Week", "2semanas": "2 weeks", mes: "Month" },
+    periodRangeCaption: (since) => `From ${since} to today`,
+    leadsInPeriod: { semana: "Leads this week", "2semanas": "Leads these 2 weeks", mes: "Leads this month" },
+    newLeadsInPeriod: { semana: "New leads this week", "2semanas": "New leads these 2 weeks", mes: "New leads this month" },
+    vsPrevSamePoint: (period, value) =>
+      `vs. ${value} at this point ${{ semana: "last week", "2semanas": "in the previous 2 weeks", mes: "last month" }[period]}`,
+    vsPrevClose: (period, value) =>
+      `vs. ${value} ${{ semana: "at the close of last week", "2semanas": "2 weeks ago", mes: "at the close of last month" }[period]}`,
+    closedInPeriod: (won, lost, open) => `${won} won, ${lost} lost in the period · ${open} still open`,
+    noneClosedInPeriod: (open) => `None won or lost in the period · ${open} still open`,
+    currentStateNote: "Current state of the pipeline; doesn't depend on the period.",
+    newLeadsPerDay: "New leads per day (this period and the previous one)",
+    metaSpend: "Spend",
     closeRate: "Close rate",
-    wonLostOpen: (won, lost, open) => `${won} won, ${lost} lost · ${open} still open`,
     medianFirstContact: "Time to first contact (median)",
     overLeadsReplied: (n) => (n === 1 ? "over 1 answered lead" : `over ${n} answered leads`),
     overSettledLeads: (n, since) => `of ${n} ${n === 1 ? "lead" : "leads"} older than 24 h, since ${since}`,
@@ -239,7 +247,6 @@ export const dictionaries: Record<Lang, Dict> = {
     metaNotConfigured:
       "Connect Meta Ads (META_ACCESS_TOKEN and META_AD_ACCOUNT_ID variables) to see spend, cost per lead, and campaign performance here.",
     metaError: (msg) => `Couldn't load Meta Ads data: ${msg}`,
-    metaSpend30d: "Spend (30 days)",
     metaCpl: "Cost per lead",
     metaLeadsReported: (n) => `${n} leads reported by Meta`,
     metaCtr: "CTR",
@@ -260,17 +267,12 @@ export const dictionaries: Record<Lang, Dict> = {
     metaLeadsPerDay: "Leads per day",
     metaByDemographic: "By age and gender",
     metaByPlacement: "By ad placement",
-    metaWeekOverWeek: "This week vs. last week",
-    metaSpendThisWeek: "Spend this week",
-    metaCplThisWeek: "CPL this week",
-    vsLastWeekAmount: (n) => `vs. ${n} last week`,
     genderMale: "Male",
     genderFemale: "Female",
     genderUnknown: "Unknown",
 
     leadAcquisition: "Lead acquisition",
     leadsBySourceCampaign: "Leads by source / campaign",
-    newLeadsPerDay: "New leads per day (last 30 days)",
     leadsByCity: "Leads by city",
 
     salesPipeline: "Sales pipeline",
