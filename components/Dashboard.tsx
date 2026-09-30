@@ -300,6 +300,16 @@ export function Dashboard(props: DashboardProps) {
 
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
 
+  const pctOfSettled = (n: number) =>
+    responseTime.settledCount > 0 ? `${Math.round((n / responseTime.settledCount) * 100)}%` : "—";
+  const trackingSince = new Date(responseTime.trackingSince).toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Hermosillo",
+  });
+  const settledSublabel =
+    responseTime.settledCount > 0 ? t.overSettledLeads(responseTime.settledCount, trackingSince) : t.notEnoughData;
+
   const partners = companyName.split("/").map((p) => p.trim());
   const partnershipLine = partners.length === 2 ? t.partnership(partners[0], partners[1]) : companyName;
 
@@ -335,7 +345,7 @@ export function Dashboard(props: DashboardProps) {
             <StatTile
               icon="clock" label={t.medianFirstContact}
               value={formatMinutes(responseTime.medianMinutes)}
-              sublabel={responseTime.sampleSize > 0 ? t.overLeadsTracked(responseTime.sampleSize) : t.notEnoughData}
+              sublabel={responseTime.repliedCount > 0 ? t.overLeadsReplied(responseTime.repliedCount) : t.notEnoughData}
               accent="good"
             />
           </div>
@@ -378,18 +388,21 @@ export function Dashboard(props: DashboardProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
               icon="zap" label={t.responseUnder5min}
-              value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.under5min / responseTime.sampleSize) * 100)}%` : "—"}
+              value={pctOfSettled(responseTime.under5min)}
+              sublabel={settledSublabel}
               accent="good"
             />
             <StatTile
               icon="clock" label={t.responseUnder1hour}
-              value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.under1hour / responseTime.sampleSize) * 100)}%` : "—"}
+              value={pctOfSettled(responseTime.under1hour)}
+              sublabel={settledSublabel}
               accent="good"
             />
             <StatTile
               icon="alert" label={t.noResponse24h}
-              value={responseTime.sampleSize > 0 ? `${Math.round((responseTime.overADay / responseTime.sampleSize) * 100)}%` : "—"}
-              accent={responseTime.overADay > 0 ? "warning" : "neutral"}
+              value={pctOfSettled(responseTime.noReplyIn24h)}
+              sublabel={settledSublabel}
+              accent={responseTime.noReplyIn24h > 0 ? "warning" : "neutral"}
             />
           </div>
         </section>

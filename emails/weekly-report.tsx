@@ -225,7 +225,15 @@ WeeklyReport.PreviewProps = {
     { label: "Perdido", value: 2, position: 6 },
   ],
   conversion: { total: 180, won: 5, lost: 2, open: 173, winRate: 0.71 },
-  responseTime: { medianMinutes: 0.5, avgMinutes: 3, sampleSize: 100, under5min: 100, under1hour: 100, overADay: 0 },
+  responseTime: {
+    trackingSince: "2026-09-28T00:00:00-07:00",
+    medianMinutes: 12,
+    repliedCount: 9,
+    settledCount: 10,
+    under5min: 4,
+    under1hour: 8,
+    noReplyIn24h: 1,
+  },
   wow: { thisWeek: 10, lastWeek: 8, deltaPct: 0.25 },
   stalled: { thresholdDays: 14, stalledCount: 146, openCount: 173, oldestDays: 90 },
 } satisfies WeeklyReportProps;

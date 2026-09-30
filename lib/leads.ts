@@ -1,5 +1,6 @@
-import type { GhlContact, GhlConversation, GhlCustomFieldDef, GhlOpportunity, GhlPipeline } from "./ghl";
+import type { GhlContact, GhlCustomFieldDef, GhlMessage, GhlOpportunity, GhlPipeline } from "./ghl";
 import type { MetaAdSpend } from "./meta";
+import { firstHumanReplyByContact } from "./metrics";
 
 export type ProductLine = "golf" | "marine" | "other";
 
@@ -134,10 +135,10 @@ export function buildLeadRows(input: {
   contacts: GhlContact[];
   opportunities: GhlOpportunity[];
   pipelines: GhlPipeline[];
-  conversations: GhlConversation[];
+  messages: GhlMessage[];
   adSpend: MetaAdSpend[];
 }): LeadRow[] {
-  const { locationId, contacts, opportunities, pipelines, conversations, adSpend } = input;
+  const { locationId, contacts, opportunities, pipelines, messages, adSpend } = input;
   const now = Date.now();
 
   const pipelineName = new Map(pipelines.map((p) => [p.id, p.name]));
@@ -152,11 +153,7 @@ export function buildLeadRows(input: {
     if (!existing || o.updatedAt > existing.updatedAt) oppByContact.set(o.contactId, o);
   }
 
-  const firstConvAt = new Map<string, number>();
-  for (const c of conversations) {
-    const existing = firstConvAt.get(c.contactId);
-    if (existing === undefined || c.dateAdded < existing) firstConvAt.set(c.contactId, c.dateAdded);
-  }
+  const firstReplyAt = firstHumanReplyByContact(contacts, messages);
 
   const adsById = new Map(adSpend.map((a) => [a.adId, a]));
   const campaignNames = new Map(adSpend.map((a) => [a.campaignId, a.campaignName]));
@@ -182,9 +179,9 @@ export function buildLeadRows(input: {
 
     const qtyRaw = asText(fieldValue(c, FIELD_BATTERY_QTY));
     const useCaseRaw = fieldValue(c, FIELD_USE_CASE);
-    const conv = firstConvAt.get(c.id);
+    const reply = firstReplyAt.get(c.id);
     const created = new Date(c.dateAdded).getTime();
-    const responseDelta = conv !== undefined ? (conv - created) / 60000 : null;
+    const responseMinutes = reply !== undefined ? (reply - created) / 60000 : null;
 
     const name =
       c.contactName?.trim() || [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || c.email || c.phone || "(sin nombre)";
@@ -216,7 +213,7 @@ export function buildLeadRows(input: {
       adName: adId ? adsById.get(adId)?.adName ?? null : null,
       channel: campaignId ? "Meta Ads" : attr?.utmSessionSource || c.source || "Desconocido",
       estCost: spend !== undefined && campaignLeads ? spend / campaignLeads : 0,
-      firstResponseMinutes: responseDelta !== null && responseDelta >= 0 ? responseDelta : null,
+      firstResponseMinutes: responseMinutes,
       ghlUrl: `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${c.id}`,
     };
   });

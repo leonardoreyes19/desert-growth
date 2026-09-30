@@ -135,30 +135,42 @@ export async function getPipelines(locationId: string): Promise<GhlPipeline[]> {
   return data.pipelines;
 }
 
-export type GhlConversation = {
+export type GhlMessage = {
   id: string;
   contactId: string;
-  dateAdded: number;
-  lastMessageDate: number;
+  conversationId: string;
+  direction: "inbound" | "outbound";
+  /** "workflow" for automations; "app" when a person sends it from GHL or the WhatsApp Business app. */
+  source?: string;
+  messageType: string;
+  dateAdded: string;
 };
 
-type ConversationsResponse = {
-  conversations: GhlConversation[];
-  total: number;
+type MessagesExportResponse = {
+  messages: GhlMessage[];
+  nextCursor: string | null;
 };
 
-export async function getAllConversations(locationId: string): Promise<GhlConversation[]> {
-  const all: GhlConversation[] = [];
-  let startAfterId: string | undefined;
-  for (let page = 0; page < 50; page++) {
-    const params: Record<string, string | number> = { locationId, limit: 100 };
-    if (startAfterId) params.startAfterId = startAfterId;
-    const data = await ghlGet<ConversationsResponse>("/conversations/search", params);
-    all.push(...data.conversations);
-    if (data.conversations.length < 100) break;
-    startAfterId = data.conversations[data.conversations.length - 1]?.id;
-  }
-  return all;
+const MESSAGE_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Facebook", "Instagram"];
+
+/** Every message in the location, across all channels the export endpoint supports. */
+export async function getAllMessages(locationId: string): Promise<GhlMessage[]> {
+  const perChannel = await Promise.all(
+    MESSAGE_CHANNELS.map(async (channel) => {
+      const all: GhlMessage[] = [];
+      let cursor: string | null = null;
+      for (let page = 0; page < 50; page++) {
+        const params: Record<string, string | number> = { locationId, channel, limit: 100 };
+        if (cursor) params.cursor = cursor;
+        const data = await ghlGet<MessagesExportResponse>("/conversations/messages/export", params);
+        all.push(...data.messages);
+        cursor = data.nextCursor;
+        if (!cursor) break;
+      }
+      return all;
+    })
+  );
+  return perChannel.flat();
 }
 
 export type GhlCustomFieldDef = {

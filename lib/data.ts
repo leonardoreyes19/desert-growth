@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { getAllContacts, getAllConversations, getAllOpportunities, getCustomFieldDefs, getPipelines } from "./ghl";
+import { getAllContacts, getAllMessages, getAllOpportunities, getCustomFieldDefs, getPipelines } from "./ghl";
 import { excludeBulkImports } from "./metrics";
 import { getMetaLifetimeSpend, type MetaAdSpend } from "./meta";
 import { attributedCampaignIds, buildLeadRows, fieldLabelsFrom, type FieldLabels, type LeadRow } from "./leads";
@@ -39,18 +39,18 @@ export type LeadData = {
 /** CRM leads joined with lifetime Meta spend of the campaigns they came from. */
 export async function loadLeadData(): Promise<LeadData> {
   const locationId = requireLocationId();
-  const [contacts, opportunities, pipelines, conversations, fieldDefs] = await Promise.all([
+  const [contacts, opportunities, pipelines, messages, fieldDefs] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
-    getAllConversations(locationId),
+    getAllMessages(locationId),
     getCustomFieldDefs(locationId),
   ]);
   const meta = await getMetaLifetimeSpend(attributedCampaignIds(opportunities));
   const adSpend = meta.configured && meta.error === undefined ? meta.byAd : [];
 
   return {
-    rows: buildLeadRows({ locationId, contacts: excludeBulkImports(contacts), opportunities, pipelines, conversations, adSpend }),
+    rows: buildLeadRows({ locationId, contacts: excludeBulkImports(contacts), opportunities, pipelines, messages, adSpend }),
     adSpend,
     currency: meta.configured && meta.error === undefined ? meta.currency : "MXN",
     metaError: meta.configured && meta.error !== undefined ? meta.error : null,

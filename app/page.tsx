@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getAllContacts, getAllConversations, getAllOpportunities, getPipelines } from "@/lib/ghl";
+import { getAllContacts, getAllMessages, getAllOpportunities, getPipelines } from "@/lib/ghl";
 import {
   conversionSummary,
   distinctTags,
@@ -36,11 +36,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const cookieTheme = cookieStore.get("theme")?.value;
   const initialTheme = cookieTheme === "dark" ? "dark" : "light";
 
-  const [ghlContacts, allOpportunities, pipelines, allConversations, meta] = await Promise.all([
+  const [ghlContacts, allOpportunities, pipelines, allMessages, meta] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
-    getAllConversations(locationId),
+    getAllMessages(locationId),
     getMetaInsights(),
   ]);
 
@@ -52,7 +52,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const contacts = selectedTag ? filterContactsByTag(allContacts, selectedTag) : allContacts;
   const contactIds = new Set(contacts.map((c) => c.id));
   const opportunities = selectedTag ? allOpportunities.filter((o) => contactIds.has(o.contactId)) : allOpportunities;
-  const conversations = selectedTag ? allConversations.filter((c) => contactIds.has(c.contactId)) : allConversations;
+  const messages = selectedTag ? allMessages.filter((m) => contactIds.has(m.contactId)) : allMessages;
 
   const bySource = leadsBySource(contacts);
   const byCity = leadsByCity(contacts);
@@ -60,7 +60,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const byStage = pipelineByStage(opportunities, pipelines);
   const byPipeline = opportunitiesByPipeline(opportunities, pipelines);
   const conversion = conversionSummary(opportunities, pipelines);
-  const responseTime = firstTouchResponseTime(contacts, conversations);
+  const responseTime = firstTouchResponseTime(contacts, messages);
   const wow = leadsWeekToDate(contacts);
   const stalled = stalledOpenOpportunities(opportunities, pipelines, 14);
 

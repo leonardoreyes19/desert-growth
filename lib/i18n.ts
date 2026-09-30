@@ -26,7 +26,8 @@ type Dict = {
   closeRate: string;
   wonOfClosed: (won: number, closed: number) => string;
   medianFirstContact: string;
-  overLeadsTracked: (n: number) => string;
+  overLeadsReplied: (n: number) => string;
+  overSettledLeads: (n: number, since: string) => string;
   notEnoughData: string;
 
   advertisingMetaAds: string;
@@ -112,7 +113,8 @@ export const dictionaries: Record<Lang, Dict> = {
     closeRate: "Tasa de cierre",
     wonOfClosed: (won, closed) => `${won} ganadas de ${closed} cerradas`,
     medianFirstContact: "Tiempo a primer contacto (mediana)",
-    overLeadsTracked: (n) => `sobre ${n} leads con seguimiento registrado`,
+    overLeadsReplied: (n) => (n === 1 ? "sobre 1 lead respondido" : `sobre ${n} leads respondidos`),
+    overSettledLeads: (n, since) => `de ${n} ${n === 1 ? "lead" : "leads"} de más de 24 h, desde el ${since}`,
     notEnoughData: "sin datos suficientes todavía",
 
     advertisingMetaAds: "Publicidad · Meta Ads",
@@ -167,7 +169,7 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponse24h: "Sin respuesta después de 24 horas",
 
     firstContactFootnote:
-      "“Tiempo a primer contacto” mide el tiempo entre la creación del lead y el primer hilo de conversación registrado en el CRM — es una aproximación, no el tiempo de respuesta humano exacto.",
+      "“Tiempo a primer contacto” y “Velocidad de respuesta” miden el tiempo entre la creación del lead y el primer mensaje que una persona le envía desde el CRM o el WhatsApp conectado (no cuentan los mensajes automáticos). Solo incluyen leads desde el 28 de septiembre de 2026, cuando se conectó WhatsApp; las respuestas hechas fuera del CRM no se ven.",
 
     viewTable: "Ver tabla",
     viewChart: "Ver gráfica",
@@ -200,7 +202,8 @@ export const dictionaries: Record<Lang, Dict> = {
     closeRate: "Close rate",
     wonOfClosed: (won, closed) => `${won} won of ${closed} closed`,
     medianFirstContact: "Time to first contact (median)",
-    overLeadsTracked: (n) => `over ${n} leads with tracked follow-up`,
+    overLeadsReplied: (n) => (n === 1 ? "over 1 answered lead" : `over ${n} answered leads`),
+    overSettledLeads: (n, since) => `of ${n} ${n === 1 ? "lead" : "leads"} older than 24 h, since ${since}`,
     notEnoughData: "not enough data yet",
 
     advertisingMetaAds: "Advertising · Meta Ads",
@@ -255,7 +258,7 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponse24h: "No response after 24 hours",
 
     firstContactFootnote:
-      "“Time to first contact” measures the time between lead creation and the first conversation thread logged in the CRM — it's an approximation, not the exact human response time.",
+      "“Time to first contact” and “Response speed” measure the time between lead creation and the first message a person sends from the CRM or the connected WhatsApp (automated messages don't count). They only include leads since September 28, 2026, when WhatsApp was connected; replies sent outside the CRM aren't visible.",
 
     viewTable: "View table",
     viewChart: "View chart",

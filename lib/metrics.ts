@@ -1,4 +1,4 @@
-import type { GhlContact, GhlConversation, GhlOpportunity, GhlPipeline } from "./ghl";
+import type { GhlContact, GhlMessage, GhlOpportunity, GhlPipeline } from "./ghl";
 
 export type SourceCount = { label: string; value: number };
 
@@ -146,50 +146,79 @@ export function conversionSummary(opportunities: GhlOpportunity[], pipelines: Gh
   return { total, won, lost, open, winRate: closed > 0 ? won / closed : 0 };
 }
 
+const AUTOMATED_SOURCES = new Set(["workflow", "bulk_actions", "campaign"]);
+
+/** First message a person (not an automation) sent to each contact after it was created. */
+export function firstHumanReplyByContact(contacts: GhlContact[], messages: GhlMessage[]): Map<string, number> {
+  const createdAt = new Map(contacts.map((c) => [c.id, new Date(c.dateAdded).getTime()]));
+  const firstReply = new Map<string, number>();
+  for (const m of messages) {
+    if (m.direction !== "outbound" || AUTOMATED_SOURCES.has(m.source ?? "")) continue;
+    if (m.messageType.startsWith("TYPE_ACTIVITY")) continue;
+    const created = createdAt.get(m.contactId);
+    const sentAt = new Date(m.dateAdded).getTime();
+    if (created === undefined || sentAt < created) continue;
+    const existing = firstReply.get(m.contactId);
+    if (existing === undefined || sentAt < existing) firstReply.set(m.contactId, sentAt);
+  }
+  return firstReply;
+}
+
+/**
+ * Replies only show up in GHL since WhatsApp was connected on 2026-09-28;
+ * before that the team answered from their phones, so older leads would all
+ * look unanswered. Measure from that day on (Hermosillo time).
+ */
+export const RESPONSE_TRACKING_SINCE = "2026-09-28T00:00:00-07:00";
+
 export type ResponseTimeSummary = {
+  trackingSince: string;
+  /** Median minutes to first human reply, over leads that got one. */
   medianMinutes: number | null;
-  avgMinutes: number | null;
-  sampleSize: number;
+  repliedCount: number;
+  /** Leads at least 24h old — each has had a full day to be answered. The percentages below are over these. */
+  settledCount: number;
   under5min: number;
   under1hour: number;
-  overADay: number;
+  noReplyIn24h: number;
 };
 
-export function firstTouchResponseTime(contacts: GhlContact[], conversations: GhlConversation[]): ResponseTimeSummary {
-  const firstConversationByContact = new Map<string, number>();
-  for (const conv of conversations) {
-    const existing = firstConversationByContact.get(conv.contactId);
-    if (existing === undefined || conv.dateAdded < existing) {
-      firstConversationByContact.set(conv.contactId, conv.dateAdded);
-    }
+export function firstTouchResponseTime(contacts: GhlContact[], messages: GhlMessage[]): ResponseTimeSummary {
+  const since = new Date(RESPONSE_TRACKING_SINCE).getTime();
+  const now = Date.now();
+  const tracked = contacts.filter((c) => new Date(c.dateAdded).getTime() >= since);
+  const firstReply = firstHumanReplyByContact(tracked, messages);
+
+  const replyMinutes: number[] = [];
+  let settledCount = 0;
+  let under5min = 0;
+  let under1hour = 0;
+  let noReplyIn24h = 0;
+  for (const c of tracked) {
+    const created = new Date(c.dateAdded).getTime();
+    const reply = firstReply.get(c.id);
+    const minutes = reply !== undefined ? (reply - created) / 60000 : null;
+    if (minutes !== null) replyMinutes.push(minutes);
+    if (now - created < 24 * 60 * 60 * 1000) continue;
+    settledCount++;
+    if (minutes !== null && minutes <= 5) under5min++;
+    if (minutes !== null && minutes <= 60) under1hour++;
+    if (minutes === null || minutes > 1440) noReplyIn24h++;
   }
 
-  const deltasMinutes: number[] = [];
-  for (const c of contacts) {
-    const firstConvAt = firstConversationByContact.get(c.id);
-    if (firstConvAt === undefined) continue;
-    const contactAt = new Date(c.dateAdded).getTime();
-    const deltaMs = firstConvAt - contactAt;
-    if (deltaMs < 0) continue;
-    deltasMinutes.push(deltaMs / 60000);
-  }
-
-  if (deltasMinutes.length === 0) {
-    return { medianMinutes: null, avgMinutes: null, sampleSize: 0, under5min: 0, under1hour: 0, overADay: 0 };
-  }
-
-  const sorted = [...deltasMinutes].sort((a, b) => a - b);
+  const sorted = replyMinutes.sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-  const avg = deltasMinutes.reduce((s, v) => s + v, 0) / deltasMinutes.length;
+  const medianMinutes =
+    sorted.length === 0 ? null : sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 
   return {
-    medianMinutes: median,
-    avgMinutes: avg,
-    sampleSize: deltasMinutes.length,
-    under5min: deltasMinutes.filter((v) => v <= 5).length,
-    under1hour: deltasMinutes.filter((v) => v <= 60).length,
-    overADay: deltasMinutes.filter((v) => v > 1440).length,
+    trackingSince: RESPONSE_TRACKING_SINCE,
+    medianMinutes,
+    repliedCount: sorted.length,
+    settledCount,
+    under5min,
+    under1hour,
+    noReplyIn24h,
   };
 }
 

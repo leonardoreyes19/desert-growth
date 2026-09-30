@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getAllContacts, getAllConversations, getAllOpportunities, getPipelines } from "@/lib/ghl";
+import { getAllContacts, getAllMessages, getAllOpportunities, getPipelines } from "@/lib/ghl";
 import {
   conversionSummary,
   excludeBulkImports,
@@ -41,18 +41,18 @@ export async function GET(req: NextRequest) {
   if (!resendApiKey) return NextResponse.json({ error: "Missing RESEND_API_KEY" }, { status: 500 });
   if (recipients.length === 0) return NextResponse.json({ error: "Missing REPORT_RECIPIENTS" }, { status: 500 });
 
-  const [ghlContacts, opportunities, pipelines, conversations] = await Promise.all([
+  const [ghlContacts, opportunities, pipelines, messages] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
-    getAllConversations(locationId),
+    getAllMessages(locationId),
   ]);
 
   const contacts = excludeBulkImports(ghlContacts);
   const bySource = leadsBySource(contacts);
   const byStage = pipelineByStage(opportunities, pipelines);
   const conversion = conversionSummary(opportunities, pipelines);
-  const responseTime = firstTouchResponseTime(contacts, conversations);
+  const responseTime = firstTouchResponseTime(contacts, messages);
   const wow = leadsWeekOverWeek(contacts);
   const stalled = stalledOpenOpportunities(opportunities, pipelines, 14);
 
