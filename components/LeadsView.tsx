@@ -9,7 +9,7 @@ import { AppHeader, usePrefs, type Dict, type Theme } from "@/components/AppHead
 import { AppFooter } from "@/components/AppFooter";
 import { FilterSelect } from "@/components/FilterSelect";
 import { PeriodBar, usePeriodSwitch } from "@/components/PeriodFilter";
-import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodKey } from "@/lib/periods";
+import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodInfo } from "@/lib/periods";
 import { Icon } from "@/components/icons";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/Panel";
@@ -28,9 +28,7 @@ export type LeadsViewProps = {
   generatedAtIso: string;
   currency: string;
   rows: LeadRow[];
-  period: PeriodKey;
-  /** Start of the selected period; null for Todo. */
-  periodStartIso: string | null;
+  periodInfo: PeriodInfo;
   fieldLabels: FieldLabels;
   initialFilters: LeadFilters;
   initialLang: Lang;
@@ -289,11 +287,11 @@ function LeadDetail({
 }
 
 export function LeadsView(props: LeadsViewProps) {
-  const { companyName, generatedAtIso, currency, rows, period, periodStartIso, fieldLabels, initialFilters, initialLang, initialTheme } =
+  const { companyName, generatedAtIso, currency, rows, periodInfo: info, fieldLabels, initialFilters, initialLang, initialTheme } =
     props;
   const prefs = usePrefs(initialLang, initialTheme);
   const { t, locale } = prefs;
-  const periodSwitch = usePeriodSwitch(period, DEFAULT_TAB_PERIOD);
+  const periodSwitch = usePeriodSwitch({ period: info.key, month: info.month }, DEFAULT_TAB_PERIOD, info.months[0] ?? null);
 
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [query, setQuery] = useState("");
@@ -428,7 +426,7 @@ export function LeadsView(props: LeadsViewProps) {
           periods={TAB_PERIODS}
           selected={periodSwitch.shown}
           onChange={periodSwitch.change}
-          periodStartIso={periodStartIso}
+          info={info}
           t={t}
           locale={locale}
         />

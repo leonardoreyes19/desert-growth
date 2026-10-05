@@ -13,6 +13,8 @@ const es = {
     `Desde el primer lead de campaña (${since}) · inversión real de Meta cruzada con cada lead del CRM`,
   moneyPeriodSubtitle: (since: string) =>
     `Leads que llegaron desde el ${since} y lo que Meta gastó en ese mismo tiempo · inversión real de Meta cruzada con cada lead del CRM`,
+  moneyMonthSubtitle: (month: string) =>
+    `Leads que llegaron en ${month} y lo que Meta gastó ese mes · inversión real de Meta cruzada con cada lead del CRM`,
   cohortNote:
     "Cada lead cuenta con su etapa de hoy: los de este periodo todavía pueden cotizarse o venderse, así que ventas y retorno suben con los días.",
   moneyNeedsMeta:
@@ -178,6 +180,7 @@ const en: ExtraDict = {
   moneySubtitle: (since) => `Since the first campaign lead (${since}) · real Meta spend matched to each CRM lead`,
   moneyPeriodSubtitle: (since) =>
     `Leads that arrived since ${since} and what Meta spent in that same time · real Meta spend matched to each CRM lead`,
+  moneyMonthSubtitle: (month) => `Leads that arrived in ${month} and what Meta spent that month · real Meta spend matched to each CRM lead`,
   cohortNote:
     "Each lead counts with today's stage: leads from this period can still be quoted or sold, so sales and return grow over the days.",
   moneyNeedsMeta:

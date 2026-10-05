@@ -57,12 +57,15 @@ export type FinanceSummary = {
 };
 
 /**
- * Leads that arrived since `start`, with each one's estimated cost redone for
- * that window: what its campaign spent in the window ÷ the campaign's leads
- * that arrived in the window.
+ * Leads that arrived in [start, end), with each one's estimated cost redone
+ * for that window: what its campaign spent in the window ÷ the campaign's
+ * leads that arrived in the window.
  */
-export function cohortSince(rows: LeadRow[], start: number, windowSpend: MetaAdSpend[]): LeadRow[] {
-  const cohort = rows.filter((r) => new Date(r.dateAdded).getTime() >= start);
+export function cohortBetween(rows: LeadRow[], start: number, end: number, windowSpend: MetaAdSpend[]): LeadRow[] {
+  const cohort = rows.filter((r) => {
+    const t = new Date(r.dateAdded).getTime();
+    return t >= start && t < end;
+  });
   const spendByCampaign = new Map<string, number>();
   for (const a of windowSpend) spendByCampaign.set(a.campaignId, (spendByCampaign.get(a.campaignId) ?? 0) + a.spend);
   const leadsByCampaign = new Map<string, number>();

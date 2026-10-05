@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { companyName, loadLeadData, readPrefs } from "@/lib/data";
-import { DEFAULT_TAB_PERIOD, isPeriodKey, periodRange } from "@/lib/periods";
+import { DEFAULT_TAB_PERIOD, TAB_PERIODS, periodFromParams, periodInfo } from "@/lib/periods";
 import { LeadsView, type LeadFilters } from "@/components/LeadsView";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +8,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Leads · Desert Growth" };
 
 type PageProps = {
-  searchParams: Promise<{ stage?: string; line?: string; tag?: string; useCase?: string; stalled?: string; periodo?: string }>;
+  searchParams: Promise<{ stage?: string; line?: string; tag?: string; useCase?: string; stalled?: string; periodo?: string; mes?: string }>;
 };
 
 export default async function LeadsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const period = isPeriodKey(params.periodo) ? params.periodo : DEFAULT_TAB_PERIOD;
-  const range = periodRange(period);
+  const range = periodFromParams(params, TAB_PERIODS, DEFAULT_TAB_PERIOD);
   const [prefs, data] = await Promise.all([readPrefs(), loadLeadData(range)]);
 
   const initialFilters: LeadFilters = {
@@ -31,8 +30,7 @@ export default async function LeadsPage({ searchParams }: PageProps) {
       generatedAtIso={new Date().toISOString()}
       currency={data.currency}
       rows={data.rows}
-      period={period}
-      periodStartIso={range.key === "todo" ? null : new Date(range.start).toISOString()}
+      periodInfo={periodInfo(range)}
       fieldLabels={data.fieldLabels}
       initialFilters={initialFilters}
       initialLang={prefs.lang}

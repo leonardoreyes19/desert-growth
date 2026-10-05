@@ -15,8 +15,8 @@ import type {
   PeriodConversion,
   WeekOverWeek,
 } from "@/lib/metrics";
-import { DEFAULT_PERIOD, SUMMARY_PERIODS, periodRange, type SummaryPeriod } from "@/lib/periods";
-import { PeriodFilter } from "@/components/PeriodFilter";
+import { DEFAULT_PERIOD, SUMMARY_PERIODS, type PeriodInfo, type SummaryPeriod } from "@/lib/periods";
+import { PeriodBar, applyPeriodParams, type PeriodChoice } from "@/components/PeriodFilter";
 import type { MetaInsights } from "@/lib/meta";
 import type { PipelineHistory } from "@/lib/snapshots";
 import type { Lang } from "@/lib/i18n";
@@ -35,8 +35,12 @@ export type DashboardProps = {
   opportunitiesCount: number;
   generatedAtIso: string;
   period: SummaryPeriod;
+  periodInfo: PeriodInfo;
   newLeads: WeekOverWeek;
+  /** Live pipeline, or how it stood at the close of a finished month. */
   pipeline: PipelineSnapshot;
+  /** False when `pipeline` is a finished month's closing state. */
+  pipelineIsLive: boolean;
   /** Pipeline at the start of the period; null when a tag filter is active (history covers the whole pipeline). */
   pipelineHistory: PipelineHistory | null;
   conversion: ConversionSummary;
@@ -148,7 +152,7 @@ function formatPlacementLabel(segment: string): string {
   return position ? `${platformLabel} · ${position}` : platformLabel;
 }
 
-function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; period: SummaryPeriod; t: Dict; locale: string }) {
+function MetaAdsPanel({ meta, vsPrev, t, locale }: { meta: MetaInsightsOk; vsPrev: (value: string) => string; t: Dict; locale: string }) {
   const money = (n: number) =>
     new Intl.NumberFormat(locale, { style: "currency", currency: meta.currency, maximumFractionDigits: 0 }).format(n);
   const money2 = (n: number) =>
@@ -164,7 +168,7 @@ function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; perio
         <StatTile
           icon="megaphone" label={t.metaSpend}
           value={money(meta.spend)}
-          comparisons={[{ pct: change(meta.spend, prev.spend), caption: t.vsPrevSamePoint(period, money(prev.spend)) }]}
+          comparisons={[{ pct: change(meta.spend, prev.spend), caption: vsPrev(money(prev.spend)) }]}
         />
         <StatTile
           icon="users" label={t.metaCpl}
@@ -172,7 +176,7 @@ function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; perio
           sublabel={t.metaLeadsReported(meta.leads.toLocaleString(locale))}
           comparisons={
             prev.cpl != null && meta.cpl != null
-              ? [{ pct: change(meta.cpl, prev.cpl), caption: t.vsPrevSamePoint(period, money2(prev.cpl)), higherIsBetter: false }]
+              ? [{ pct: change(meta.cpl, prev.cpl), caption: vsPrev(money2(prev.cpl)), higherIsBetter: false }]
               : []
           }
           accent="good"
@@ -181,7 +185,7 @@ function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; perio
           icon="mousePointer" label={t.metaCtr}
           value={`${meta.ctr.toFixed(2)}%`}
           sublabel={t.metaClicks(meta.clicks.toLocaleString(locale))}
-          comparisons={prev.ctr != null ? [{ pct: change(meta.ctr, prev.ctr), caption: t.vsPrevSamePoint(period, `${prev.ctr.toFixed(2)}%`) }] : []}
+          comparisons={prev.ctr != null ? [{ pct: change(meta.ctr, prev.ctr), caption: vsPrev(`${prev.ctr.toFixed(2)}%`) }] : []}
         />
         <StatTile
           icon="eye" label={t.metaReach}
@@ -280,8 +284,10 @@ export function Dashboard(props: DashboardProps) {
     opportunitiesCount,
     generatedAtIso,
     period,
+    periodInfo,
     newLeads,
     pipeline,
+    pipelineIsLive,
     pipelineHistory,
     conversion,
     periodConversion,
@@ -308,25 +314,30 @@ export function Dashboard(props: DashboardProps) {
 
   // Tag and period filters re-render on the server; show the new choice right away and dim the numbers until it lands.
   const [isFiltering, startFiltering] = useTransition();
-  const [requested, setRequested] = useState({ tag: selectedTag, period });
-  const shownTag = isFiltering ? requested.tag : selectedTag;
-  const shownPeriod = isFiltering ? requested.period : period;
+  const current: { tag: string | null; choice: PeriodChoice<SummaryPeriod> } = {
+    tag: selectedTag,
+    choice: { period, month: periodInfo.month },
+  };
+  const [requested, setRequested] = useState(current);
+  const shown = isFiltering ? requested : current;
 
-  function navigate(next: { tag: string | null; period: SummaryPeriod }) {
+  function navigate(next: typeof current) {
     const params = new URLSearchParams();
-    if (next.period !== DEFAULT_PERIOD) params.set("periodo", next.period);
+    applyPeriodParams(params, next.choice, DEFAULT_PERIOD, periodInfo.months[0] ?? null);
     if (next.tag) params.set("tag", next.tag);
     const query = params.toString();
     setRequested(next);
     startFiltering(() => router.push(query ? `${pathname}?${query}` : pathname));
   }
 
-  const periodStart = new Date(periodRange(period).start).toLocaleDateString(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-    timeZone: "America/Hermosillo",
-  });
+  // A finished month is labelled by name and compared with the whole month before it.
+  const monthName = (iso: string) =>
+    new Date(iso).toLocaleDateString(locale, { month: "long", timeZone: "America/Hermosillo" });
+  const pastMonth = periodInfo.isPast ? monthName(periodInfo.startIso) : null;
+  const prevMonth = monthName(periodInfo.prevStartIso);
+  const vsPrevWindow = (value: string) => (pastMonth ? t.vsInMonth(value, prevMonth) : t.vsPrevSamePoint(period, value));
+  const vsPrevCloseText = (value: string) => (pastMonth ? t.vsAtMonthClose(value, prevMonth) : t.vsPrevClose(period, value));
+  const pipelineNote = pastMonth ? (pipelineIsLive ? t.pipelineNoHistoryWithTag : t.asOfMonthClose(pastMonth)) : null;
 
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
@@ -343,8 +354,8 @@ export function Dashboard(props: DashboardProps) {
   const pctChange = (current: number, previous: number) => (previous > 0 ? (current - previous) / previous : null);
   const vsPeriodStart = (key: keyof PipelineSnapshot, higherIsBetter = true): Comparison[] => {
     const previous = pipelineHistory?.configured ? pipelineHistory.previous : null;
-    if (!previous) return [];
-    return [{ pct: pctChange(pipeline[key], previous[key]), caption: t.vsPrevClose(period, previous[key].toLocaleString(locale)), higherIsBetter }];
+    if (!previous || (pastMonth && pipelineIsLive)) return [];
+    return [{ pct: pctChange(pipeline[key], previous[key]), caption: vsPrevCloseText(previous[key].toLocaleString(locale)), higherIsBetter }];
   };
   const rate = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
 
@@ -366,36 +377,32 @@ export function Dashboard(props: DashboardProps) {
         aria-busy={isFiltering}
       >
 
-        <div className="flex flex-wrap items-center gap-3">
-          <PeriodFilter
-            periods={SUMMARY_PERIODS}
-            selected={shownPeriod}
-            onChange={(p) => navigate({ tag: shownTag, period: p })}
-            label={t.periodLabel}
-            options={t.periodOption}
-          />
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-            {t.periodRangeCaption(periodStart)}
-          </span>
-        </div>
+        <PeriodBar
+          periods={SUMMARY_PERIODS}
+          selected={shown.choice}
+          onChange={(choice) => navigate({ tag: shown.tag, choice })}
+          info={periodInfo}
+          t={t}
+          locale={locale}
+        />
 
         <SourceGroup title={t.crmGroupTitle} subtitle={t.crmGroupSubtitle} accent="var(--series-1)">
         {availableTags.length > 0 && (
-          <TagFilter tags={availableTags} selected={shownTag} onChange={(tag) => navigate({ tag, period: shownPeriod })} label={t.tagFilterLabel} allLabel={t.allLeads} />
+          <TagFilter tags={availableTags} selected={shown.tag} onChange={(tag) => navigate({ tag, choice: shown.choice })} label={t.tagFilterLabel} allLabel={t.allLeads} />
         )}
         <section>
           <SectionLabel>{t.summary}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
-              icon="users" label={t.leadsInPeriod[period]}
+              icon="users" label={pastMonth ? t.leadsAtMonthClose(pastMonth) : t.leadsInPeriod[period]}
               value={pipeline.inConversation.toLocaleString(locale)}
-              sublabel={t.inConversationSublabel}
+              sublabel={pipelineNote ?? t.inConversationSublabel}
               comparisons={vsPeriodStart("inConversation")}
             />
             <StatTile
-              icon="trendUp" label={t.newLeadsInPeriod[period]}
+              icon="trendUp" label={pastMonth ? t.newLeadsInMonth(pastMonth) : t.newLeadsInPeriod[period]}
               value={newLeads.thisWeek.toLocaleString(locale)}
-              comparisons={[{ pct: newLeads.deltaPct, caption: t.vsPrevSamePoint(period, newLeads.lastWeek.toLocaleString(locale)) }]}
+              comparisons={[{ pct: newLeads.deltaPct, caption: vsPrevWindow(newLeads.lastWeek.toLocaleString(locale)) }]}
             />
             <StatTile
               icon="target" label={t.closeRate}
@@ -408,7 +415,7 @@ export function Dashboard(props: DashboardProps) {
               comparisons={
                 prevPeriodConversion.winRate === null
                   ? []
-                  : [{ pct: null, caption: t.vsPrevSamePoint(period, rate(prevPeriodConversion.winRate)) }]
+                  : [{ pct: null, caption: vsPrevWindow(rate(prevPeriodConversion.winRate)) }]
               }
               accent={
                 periodConversion.winRate === null ? "neutral" : periodConversion.winRate >= 0.4 ? "good" : periodConversion.winRate > 0 ? "warning" : "neutral"
@@ -417,13 +424,13 @@ export function Dashboard(props: DashboardProps) {
             <StatTile
               icon="fileText" label={t.openLeads}
               value={pipeline.open.toLocaleString(locale)}
-              sublabel={t.openLeadsSublabel}
+              sublabel={pipelineNote ?? t.openLeadsSublabel}
               comparisons={vsPeriodStart("open")}
             />
             <StatTile
               icon="hourglass" label={t.noResponseLeads}
               value={pipeline.noResponse.toLocaleString(locale)}
-              sublabel={t.noResponseLeadsSublabel}
+              sublabel={pipelineNote ?? t.noResponseLeadsSublabel}
               comparisons={vsPeriodStart("noResponse", false)}
               accent="warning"
             />
@@ -463,7 +470,7 @@ export function Dashboard(props: DashboardProps) {
               value={stalled.stalledCount.toLocaleString(locale)}
               sublabel={t.stalledSublabel(stalled.openCount, stalled.thresholdDays)}
               comparisons={stalled.byStage.map((s) => ({ pct: null, caption: `${s.label}: ${s.value.toLocaleString(locale)}` }))}
-              action={stalled.stalledCount > 0 ? { href: "/leads?stalled=1", label: t.seeStalledLeads } : undefined}
+              action={stalled.stalledCount > 0 ? { href: "/leads?periodo=todo&stalled=1", label: t.seeStalledLeads } : undefined}
               accent={stalled.stalledCount > 0 ? "warning" : "good"}
             />
           </div>
@@ -516,7 +523,7 @@ export function Dashboard(props: DashboardProps) {
                 {t.metaError(meta.error)}
               </div>
             ) : metaOk ? (
-              <MetaAdsPanel meta={metaOk} period={period} t={t} locale={locale} />
+              <MetaAdsPanel meta={metaOk} vsPrev={vsPrevWindow} t={t} locale={locale} />
             ) : null}
           </section>
         </SourceGroup>

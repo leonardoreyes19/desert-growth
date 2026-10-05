@@ -11,15 +11,13 @@ import { Funnel } from "@/components/Funnel";
 import { Panel, Td, Th } from "@/components/Panel";
 import { SectionLabel } from "@/components/SectionLabel";
 import { PeriodBar, usePeriodSwitch } from "@/components/PeriodFilter";
-import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodKey } from "@/lib/periods";
+import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodInfo } from "@/lib/periods";
 
 export type MoneyViewProps = {
   companyName: string;
   generatedAtIso: string;
   currency: string;
-  period: PeriodKey;
-  /** Start of the selected period; null for Todo. */
-  periodStartIso: string | null;
+  periodInfo: PeriodInfo;
   finance: FinanceSummary;
   metaConfigured: boolean;
   metaError: string | null;
@@ -28,11 +26,11 @@ export type MoneyViewProps = {
 };
 
 export function MoneyView(props: MoneyViewProps) {
-  const { companyName, generatedAtIso, currency, period, periodStartIso, finance, metaConfigured, metaError, initialLang, initialTheme } =
+  const { companyName, generatedAtIso, currency, periodInfo: info, finance, metaConfigured, metaError, initialLang, initialTheme } =
     props;
   const prefs = usePrefs(initialLang, initialTheme);
   const { t, locale } = prefs;
-  const periodSwitch = usePeriodSwitch(period, DEFAULT_TAB_PERIOD);
+  const periodSwitch = usePeriodSwitch({ period: info.key, month: info.month }, DEFAULT_TAB_PERIOD, info.months[0] ?? null);
 
   const money = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
   const money2 = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
@@ -43,9 +41,12 @@ export function MoneyView(props: MoneyViewProps) {
 
   const tot = finance.totals;
   const dateLabel = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "America/Hermosillo" });
-  const subtitle = periodStartIso
-    ? t.moneyPeriodSubtitle(dateLabel(periodStartIso))
-    : t.moneySubtitle(finance.firstCampaignDate ? dateLabel(finance.firstCampaignDate) : t.noValue);
+  const subtitle =
+    info.key === "todo"
+      ? t.moneySubtitle(finance.firstCampaignDate ? dateLabel(finance.firstCampaignDate) : t.noValue)
+      : info.isPast
+        ? t.moneyMonthSubtitle(new Date(info.startIso).toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "America/Hermosillo" }))
+        : t.moneyPeriodSubtitle(dateLabel(info.startIso));
   const wastedShare = tot.spend > 0 ? tot.wastedSpend / tot.spend : null;
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
@@ -84,10 +85,10 @@ export function MoneyView(props: MoneyViewProps) {
           periods={TAB_PERIODS}
           selected={periodSwitch.shown}
           onChange={periodSwitch.change}
-          periodStartIso={periodStartIso}
+          info={info}
           t={t}
           locale={locale}
-          note={periodStartIso ? t.cohortNote : undefined}
+          note={info.key !== "todo" ? t.cohortNote : undefined}
         />
 
         {(!metaConfigured || metaError) && (

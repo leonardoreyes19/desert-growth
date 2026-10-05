@@ -71,11 +71,11 @@ export function opportunitiesByPipeline(opportunities: GhlOpportunity[], pipelin
 
 export type DayCount = { date: string; value: number };
 
-/** New leads per Hermosillo calendar day, from `from` through today. */
-export function leadsOverTime(contacts: GhlContact[], from: number): DayCount[] {
+/** New leads per Hermosillo calendar day, from `from` through `to` (exclusive) or today, whichever is earlier. */
+export function leadsOverTime(contacts: GhlContact[], from: number, to = Infinity): DayCount[] {
   const buckets = new Map<string, number>();
-  const today = hermosilloDate(Date.now());
-  for (let t = from; hermosilloDate(t) <= today; t += ONE_DAY_MS) buckets.set(hermosilloDate(t), 0);
+  const last = hermosilloDate(Math.min(Date.now(), to - 1));
+  for (let t = from; hermosilloDate(t) <= last; t += ONE_DAY_MS) buckets.set(hermosilloDate(t), 0);
   for (const c of contacts) {
     const key = hermosilloDate(new Date(c.dateAdded).getTime());
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
@@ -83,8 +83,11 @@ export function leadsOverTime(contacts: GhlContact[], from: number): DayCount[] 
   return [...buckets.entries()].map(([date, value]) => ({ date, value }));
 }
 
-export function contactsSince(contacts: GhlContact[], from: number): GhlContact[] {
-  return contacts.filter((c) => new Date(c.dateAdded).getTime() >= from);
+export function contactsBetween(contacts: GhlContact[], from: number, to = Infinity): GhlContact[] {
+  return contacts.filter((c) => {
+    const t = new Date(c.dateAdded).getTime();
+    return t >= from && t < to;
+  });
 }
 
 export type StageCount = { label: string; value: number; position: number };
@@ -246,11 +249,16 @@ export type ResponseTimeSummary = {
   noReplyIn24h: number;
 };
 
-/** Response speed for leads that arrived since `from` (never earlier than RESPONSE_TRACKING_SINCE). */
-export function firstTouchResponseTime(contacts: GhlContact[], messages: GhlMessage[], from = 0): ResponseTimeSummary {
+/** Response speed for leads that arrived in [from, to) (never earlier than RESPONSE_TRACKING_SINCE). */
+export function firstTouchResponseTime(
+  contacts: GhlContact[],
+  messages: GhlMessage[],
+  from = 0,
+  to = Infinity
+): ResponseTimeSummary {
   const since = Math.max(from, new Date(RESPONSE_TRACKING_SINCE).getTime());
   const now = Date.now();
-  const tracked = contacts.filter((c) => new Date(c.dateAdded).getTime() >= since);
+  const tracked = contactsBetween(contacts, since, to);
   const firstReply = firstHumanReplyByContact(tracked, messages);
 
   const replyMinutes: number[] = [];
@@ -377,12 +385,12 @@ export function hermosilloDate(t: number): string {
   return new Date(t + HERMOSILLO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-/** New leads since `start` vs. the previous period from `prevStart` up to the same elapsed point. */
+/** New leads in the period vs. its comparison window (previous period up to the same point, or all of it). */
 export function leadsInPeriod(
   contacts: GhlContact[],
-  range: { start: number; prevStart: number; prevSamePoint: number }
+  range: { start: number; end: number; prevStart: number; prevSamePoint: number }
 ): WeekOverWeek {
-  return countWeekOverWeek(contacts, range.start, Infinity, range.prevStart, range.prevSamePoint);
+  return countWeekOverWeek(contacts, range.start, range.end, range.prevStart, range.prevSamePoint);
 }
 
 const BULK_IMPORT_MIN_SIZE = 20;

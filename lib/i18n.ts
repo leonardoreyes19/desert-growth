@@ -29,6 +29,15 @@ type Dict = {
   noResponseLeadsSublabel: string;
   noDataInPeriod: string;
   periodLabel: string;
+  monthPickerLabel: string;
+  monthInProgress: string;
+  wholeMonth: (month: string) => string;
+  leadsAtMonthClose: (month: string) => string;
+  newLeadsInMonth: (month: string) => string;
+  vsInMonth: (value: string, month: string) => string;
+  vsAtMonthClose: (value: string, month: string) => string;
+  asOfMonthClose: (month: string) => string;
+  pipelineNoHistoryWithTag: string;
   periodOption: Record<PeriodKey, string>;
   periodRangeCaption: (since: string) => string;
   allTime: string;
@@ -127,6 +136,15 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponseLeadsSublabel: "Leads abiertos en la etapa Sin respuesta",
     noDataInPeriod: "Sin datos en este periodo",
     periodLabel: "Periodo",
+    monthPickerLabel: "Mes",
+    monthInProgress: "(en curso)",
+    wholeMonth: (month) => `Todo ${month}`,
+    leadsAtMonthClose: (month) => `Leads al cierre de ${month}`,
+    newLeadsInMonth: (month) => `Leads nuevos en ${month}`,
+    vsInMonth: (value, month) => `vs. ${value} en ${month}`,
+    vsAtMonthClose: (value, month) => `vs. ${value} al cierre de ${month}`,
+    asOfMonthClose: (month) => `Como estaban al cierre de ${month}`,
+    pipelineNoHistoryWithTag: "Estado actual: con una etiqueta elegida no hay historial del pipeline",
     periodOption: { semana: "Semana", mes: "Mes", todo: "Todo" },
     allTime: "Desde el primer lead",
     periodRangeCaption: (since) => `Del ${since} a hoy`,
@@ -229,6 +247,15 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponseLeadsSublabel: "Open leads in the No response stage",
     noDataInPeriod: "No data in this period",
     periodLabel: "Period",
+    monthPickerLabel: "Month",
+    monthInProgress: "(in progress)",
+    wholeMonth: (month) => `All of ${month}`,
+    leadsAtMonthClose: (month) => `Leads at the close of ${month}`,
+    newLeadsInMonth: (month) => `New leads in ${month}`,
+    vsInMonth: (value, month) => `vs. ${value} in ${month}`,
+    vsAtMonthClose: (value, month) => `vs. ${value} at the close of ${month}`,
+    asOfMonthClose: (month) => `As they stood at the close of ${month}`,
+    pipelineNoHistoryWithTag: "Current state: there's no pipeline history with a tag selected",
     periodOption: { semana: "Week", mes: "Month", todo: "All" },
     allTime: "Since the first lead",
     periodRangeCaption: (since) => `From ${since} to today`,

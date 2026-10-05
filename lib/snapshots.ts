@@ -15,7 +15,14 @@ import { monthPath, weekPath, type StoredSnapshot } from "./snapshot-paths";
 
 export type PipelineHistory =
   | { configured: false }
-  | { configured: true; previous: StoredSnapshot | null; error?: string };
+  | {
+      configured: true;
+      /** The pipeline when the previous period closed. */
+      previous: StoredSnapshot | null;
+      /** For a finished month: the pipeline when that month closed. */
+      atEnd: StoredSnapshot | null;
+      error?: string;
+    };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -53,15 +60,19 @@ export async function recordPipelineSnapshot(current: PipelineSnapshot): Promise
   }
 }
 
-/** How the pipeline stood when the previous period closed, i.e. at the start of `range`. */
-export async function pipelineAtPeriodStart(range: PeriodRange): Promise<PipelineHistory> {
+/** How the pipeline stood when the previous period closed (and, for a finished month, when it closed). */
+export async function pipelineHistoryFor(range: PeriodRange): Promise<PipelineHistory> {
   if (!configured()) return { configured: false };
   // A week period starts on a Monday: that's the close of the week before it.
-  const path = range.key === "mes" ? monthPath(range.prevStart) : weekPath(range.start - WEEK_MS);
+  const previousPath = range.key === "mes" ? monthPath(range.prevStart) : weekPath(range.start - WEEK_MS);
   try {
-    return { configured: true, previous: await read(path, true) };
+    const [previous, atEnd] = await Promise.all([
+      read(previousPath, true),
+      range.isPast ? read(monthPath(range.start), true) : null,
+    ]);
+    return { configured: true, previous, atEnd };
   } catch (err) {
     console.error("Reading pipeline history failed", err);
-    return { configured: true, previous: null, error: err instanceof Error ? err.message : String(err) };
+    return { configured: true, previous: null, atEnd: null, error: err instanceof Error ? err.message : String(err) };
   }
 }

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getAllContacts, getAllMessages, getAllOpportunities, getCustomFieldDefs, getPipelines } from "./ghl";
 import { excludeBulkImports } from "./metrics";
 import { getMetaAdSpend, type MetaAdSpend } from "./meta";
-import { cohortSince } from "./finance";
+import { cohortBetween } from "./finance";
 import { periodDates, type PeriodRange } from "./periods";
 import { attributedCampaignIds, buildLeadRows, fieldLabelsFrom, type FieldLabels, type LeadRow } from "./leads";
 import { isLang, DEFAULT_LANG, type Lang } from "./i18n";
@@ -75,7 +75,7 @@ export async function loadLeadData(range: PeriodRange): Promise<LeadData> {
   const adSpend = ok(meta) ? meta.byAd : [];
 
   return {
-    rows: range.key === "todo" ? allRows : cohortSince(allRows, range.start, adSpend),
+    rows: range.key === "todo" ? allRows : cohortBetween(allRows, range.start, range.end, adSpend),
     allRows,
     adSpend,
     currency: ok(meta) ? meta.currency : "MXN",
