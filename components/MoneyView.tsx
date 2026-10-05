@@ -47,7 +47,7 @@ export function MoneyView(props: MoneyViewProps) {
     ? t.moneyPeriodSubtitle(dateLabel(periodStartIso))
     : t.moneySubtitle(finance.firstCampaignDate ? dateLabel(finance.firstCampaignDate) : t.noValue);
   const wastedShare = tot.spend > 0 ? tot.wastedSpend / tot.spend : null;
-  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
+  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
   const lines = (["golf", "marine", "other"] as ProductLine[]).filter((l) => finance.byLine[l]);
   const lineRows: { label: string; get: (l: LineFinance) => string }[] = [

@@ -10,6 +10,13 @@ const PAD_LEFT = 32;
 const PAD_BOTTOM = 24;
 const PAD_TOP = 12;
 
+function niceStep(raw: number): number {
+  if (raw <= 1) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const f = raw / magnitude;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * magnitude;
+}
+
 export function LineChart({
   title,
   data,
@@ -23,7 +30,11 @@ export function LineChart({
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  const max = Math.max(1, ...data.map((d) => d.value));
+  // Y axis on round steps (1, 2, 5, 10, 20…) so tick labels never repeat after rounding.
+  const rawMax = Math.max(1, ...data.map((d) => d.value));
+  const step = niceStep(rawMax / 4);
+  const gridTicks = Math.ceil(rawMax / step);
+  const max = gridTicks * step;
   const plotW = WIDTH - PAD_LEFT;
   const plotH = HEIGHT - PAD_BOTTOM - PAD_TOP;
   const stepX = data.length > 1 ? plotW / (data.length - 1) : 0;
@@ -44,7 +55,6 @@ export function LineChart({
     setHoverIdx(Math.max(0, Math.min(data.length - 1, idx)));
   }
 
-  const gridTicks = 4;
   const hovered = hoverIdx !== null ? points[hoverIdx] : null;
 
   const maxXLabels = 6;
@@ -68,7 +78,7 @@ export function LineChart({
       >
         {Array.from({ length: gridTicks + 1 }).map((_, i) => {
           const y = PAD_TOP + (plotH / gridTicks) * i;
-          const value = Math.round(max - (max / gridTicks) * i);
+          const value = max - step * i;
           return (
             <g key={i}>
               <line x1={PAD_LEFT} x2={WIDTH} y1={y} y2={y} stroke="var(--gridline)" strokeWidth={1} />

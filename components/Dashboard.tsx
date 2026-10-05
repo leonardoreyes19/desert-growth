@@ -156,7 +156,7 @@ function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; perio
 
   const prev = meta.previous;
   const change = (current: number, previous: number | null) => (previous ? (current - previous) / previous : null);
-  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
+  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
   return (
     <>
@@ -328,7 +328,7 @@ export function Dashboard(props: DashboardProps) {
     timeZone: "America/Hermosillo",
   });
 
-  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
+  const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
   const pctOfSettled = (n: number) =>
     responseTime.settledCount > 0 ? `${Math.round((n / responseTime.settledCount) * 100)}%` : "—";

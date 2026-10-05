@@ -9,13 +9,13 @@ export function BarChart({
   data,
   formatValue = (n: number) => n.toLocaleString("es-MX"),
   valueSuffix,
-  labels = { viewTable: "Ver tabla", viewChart: "Ver gráfica", category: "Categoría", value: "Valor" },
+  labels = { viewTable: "Ver tabla", viewChart: "Ver gráfica", category: "Categoría", value: "Valor", empty: "Sin datos en este periodo" },
 }: {
   title: string;
   data: BarDatum[];
   formatValue?: (n: number) => string;
   valueSuffix?: string;
-  labels?: { viewTable: string; viewChart: string; category: string; value: string };
+  labels?: { viewTable: string; viewChart: string; category: string; value: string; empty: string };
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -31,6 +31,7 @@ export function BarChart({
         <h3 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
           {title}
         </h3>
+        {data.length > 0 && (
         <button
           onClick={() => setShowTable((v) => !v)}
           className="text-xs underline"
@@ -40,9 +41,14 @@ export function BarChart({
         >
           {showTable ? labels.viewChart : labels.viewTable}
         </button>
+        )}
       </div>
 
-      {showTable ? (
+      {data.length === 0 ? (
+        <p className="text-sm py-6 text-center" style={{ color: "var(--text-muted)" }}>
+          {labels.empty}
+        </p>
+      ) : showTable ? (
         <table id={tableId} className="w-full text-sm">
           <thead>
             <tr style={{ color: "var(--text-secondary)" }}>

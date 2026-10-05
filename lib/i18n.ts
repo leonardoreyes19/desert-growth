@@ -27,6 +27,7 @@ type Dict = {
   openLeadsSublabel: string;
   noResponseLeads: string;
   noResponseLeadsSublabel: string;
+  noDataInPeriod: string;
   periodLabel: string;
   periodOption: Record<PeriodKey, string>;
   periodRangeCaption: (since: string) => string;
@@ -124,6 +125,7 @@ export const dictionaries: Record<Lang, Dict> = {
     openLeadsSublabel: "Todo lo que no está ganado ni perdido",
     noResponseLeads: "Sin respuesta",
     noResponseLeadsSublabel: "Leads abiertos en la etapa Sin respuesta",
+    noDataInPeriod: "Sin datos en este periodo",
     periodLabel: "Periodo",
     periodOption: { semana: "Semana", mes: "Mes", todo: "Todo" },
     allTime: "Desde el primer lead",
@@ -225,6 +227,7 @@ export const dictionaries: Record<Lang, Dict> = {
     openLeadsSublabel: "Everything not yet won or lost",
     noResponseLeads: "No response",
     noResponseLeadsSublabel: "Open leads in the No response stage",
+    noDataInPeriod: "No data in this period",
     periodLabel: "Period",
     periodOption: { semana: "Week", mes: "Month", todo: "All" },
     allTime: "Since the first lead",
