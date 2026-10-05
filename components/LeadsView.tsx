@@ -380,10 +380,15 @@ export function LeadsView(props: LeadsViewProps) {
     [baseFiltered, filters.stage, sort]
   );
 
-  const quoted = visible.filter((r) => QUOTED_BUCKETS.includes(r.bucket) || (r.bucket === "lost" && r.value > 0));
-  const won = visible.filter((r) => r.bucket === "won");
-  const cost = visible.reduce((s, r) => s + r.estCost, 0);
-  const paidCount = visible.filter((r) => r.estCost > 0).length;
+  // With a period: quotes and sales that happened in it, and the cost of the leads that arrived in it.
+  const windowStart = info.key === "todo" ? -Infinity : new Date(info.startIso).getTime();
+  const windowEnd = info.endIso ? new Date(info.endIso).getTime() : Infinity;
+  const inPeriod = (iso: string | null) => iso !== null && new Date(iso).getTime() >= windowStart && new Date(iso).getTime() < windowEnd;
+  const quoted = visible.filter((r) => inPeriod(r.quotedAt));
+  const won = visible.filter((r) => r.bucket === "won" && inPeriod(r.closedAt));
+  const arrived = visible.filter((r) => inPeriod(r.dateAdded));
+  const cost = arrived.reduce((s, r) => s + r.estCost, 0);
+  const paidCount = arrived.filter((r) => r.estCost > 0).length;
   const activeCount = [filters.stage, filters.line, filters.tag, filters.useCase, filters.stalled, query.trim() || null].filter(Boolean).length;
 
   const sortOptions: { value: string; label: string }[] = [

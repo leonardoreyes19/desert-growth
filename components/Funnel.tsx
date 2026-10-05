@@ -5,7 +5,7 @@ import { useState } from "react";
 export type FunnelDatum = { label: string; hint?: string; count: number; valueLabel?: string };
 
 /**
- * Horizontal funnel: one bar per step, width relative to the first step, with
+ * Horizontal funnel: one bar per step, width relative to the largest step, with
  * the step-to-step conversion printed beside it. Single hue — the steps are
  * one measure shrinking, not separate categories.
  */
@@ -18,10 +18,12 @@ export function Funnel({
   title: string;
   steps: FunnelDatum[];
   formatCount: (n: number) => string;
-  ofPrevious: (pct: string) => string;
+  /** Omit when the steps aren't the same leads narrowing down (e.g. a period's activity). */
+  ofPrevious?: (pct: string) => string;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
-  const max = Math.max(1, steps[0]?.count ?? 1);
+  // Scale to the largest step: in a period's activity a later step can outnumber the first.
+  const max = Math.max(1, ...steps.map((s) => s.count));
 
   return (
     <div
@@ -78,7 +80,7 @@ export function Funnel({
                       </span>
                     )}
                   </span>
-                  {conv !== null && (
+                  {conv !== null && ofPrevious && (
                     <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
                       {ofPrevious(`${Math.round(conv * 100)}%`)}
                     </span>

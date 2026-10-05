@@ -23,9 +23,9 @@ export default async function MoneyPage({ searchParams }: PageProps) {
       currency={data.currency}
       periodInfo={periodInfo(range)}
       finance={financeSummary(
-        data.rows,
-        data.adSpend,
         data.allRows,
+        data.arrivals,
+        data.adSpend,
         range.key === "todo" ? null : { start: range.start, end: range.end }
       )}
       metaConfigured={data.metaConfigured}

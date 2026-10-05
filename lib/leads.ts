@@ -1,6 +1,8 @@
 import type { GhlContact, GhlCustomFieldDef, GhlMessage, GhlOpportunity, GhlPipeline } from "./ghl";
 import type { MetaAdSpend } from "./meta";
 import { firstHumanReplyByContact } from "./metrics";
+import type { OppEvent, OppEventLog } from "./opportunity-events";
+import { answeredAt, closedAt, quotedAt, stateAt, withoutBounces } from "./opportunity-state";
 
 export type ProductLine = "golf" | "marine" | "other";
 
@@ -10,6 +12,7 @@ export type StageBucket =
   | "noResponse"
   | "quoted"
   | "negotiation"
+  | "later"
   | "won"
   | "lost"
   | "disqualified"
@@ -50,7 +53,17 @@ export type LeadRow = {
   value: number;
   daysInStage: number | null;
   daysSinceCreated: number;
-  /** When the deal was won or lost (its last stage or status change, whichever is later); null while open. */
+  /**
+   * The opportunity's stage history (oldest first), from GHL's activity log —
+   * or, if that isn't available, approximated from its creation and last
+   * stage change.
+   */
+  events: OppEvent[];
+  /** When it first reached Cotización enviada (or later). */
+  quotedAt: string | null;
+  /** When it first moved past Lead nuevo / Sin respuesta. */
+  answeredAt: string | null;
+  /** When it was won or lost; null while open. */
   closedAt: string | null;
   useCase: string[];
   batteryQty: number | null;
@@ -116,6 +129,7 @@ export function bucketForStage(stageName: string | null, status: string | undefi
   if (/descalificad/.test(s)) return "disqualified";
   if (/sin respuesta/.test(s)) return "noResponse";
   if (/negociaci/.test(s)) return "negotiation";
+  if (/m[aá]s adelante/.test(s)) return "later";
   if (/cotizaci/.test(s)) return "quoted";
   if (/contactad/.test(s)) return "contacted";
   if (/nuevo/.test(s)) return "new";
@@ -150,8 +164,9 @@ export function buildLeadRows(input: {
   pipelines: GhlPipeline[];
   messages: GhlMessage[];
   adSpend: MetaAdSpend[];
+  history: OppEventLog | null;
 }): LeadRow[] {
-  const { locationId, contacts, opportunities, pipelines, messages, adSpend } = input;
+  const { locationId, contacts, opportunities, pipelines, messages, adSpend, history } = input;
   const now = Date.now();
 
   const pipelineName = new Map(pipelines.map((p) => [p.id, p.name]));
@@ -215,7 +230,7 @@ export function buildLeadRows(input: {
       value: o?.monetaryValue ?? 0,
       daysInStage: o?.lastStageChangeAt ? Math.max(0, (now - new Date(o.lastStageChangeAt).getTime()) / DAY_MS) : null,
       daysSinceCreated: Math.max(0, (now - created) / DAY_MS),
-      closedAt: o ? closedAtOf(o, stage?.name ?? null) : null,
+      ...eventFields(o ? withoutBounces(history?.[o.id] ?? approximateEvents(o, stage?.name ?? "")) : [], now),
       useCase: useCaseRaw == null ? [] : Array.isArray(useCaseRaw) ? useCaseRaw : [useCaseRaw],
       batteryQty: parseBatteryQty(qtyRaw),
       batteryQtyRaw: qtyRaw,
@@ -233,11 +248,28 @@ export function buildLeadRows(input: {
   });
 }
 
-function closedAtOf(o: GhlOpportunity, stageName: string | null): string | null {
-  const bucket = bucketForStage(stageName, o.status);
-  if (bucket !== "won" && bucket !== "lost" && bucket !== "disqualified") return null;
-  const t = Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
-  return t > 0 ? new Date(t).toISOString() : null;
+/** Without the activity log: created as Lead nuevo, then in its current stage since its last stage change. */
+function approximateEvents(o: GhlOpportunity, stageName: string): OppEvent[] {
+  const created = new Date(o.createdAt).getTime();
+  const changed = Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
+  if (changed <= created) return [{ t: created, stage: stageName, status: o.status }];
+  return [
+    { t: created, stage: "Lead nuevo", status: "open" },
+    { t: changed, stage: stageName, status: o.status },
+  ];
+}
+
+function eventFields(events: OppEvent[], now: number) {
+  const iso = (t: number | null) => (t === null ? null : new Date(t).toISOString());
+  const current = stateAt(events, now + 1);
+  return {
+    events,
+    quotedAt: iso(quotedAt(events)),
+    answeredAt: iso(answeredAt(events)),
+    closedAt: iso(closedAt(events)),
+    // Days since it really entered its current stage (bounces ignored); falls back to GHL's lastStageChangeAt.
+    ...(current ? { daysInStage: Math.max(0, (now - current.stageSince) / DAY_MS) } : {}),
+  };
 }
 
 function firstAttribution(o: GhlOpportunity) {

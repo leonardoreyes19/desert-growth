@@ -4,6 +4,7 @@ import { getAllContacts, getAllMessages, getAllOpportunities, getCustomFieldDefs
 import { excludeBulkImports } from "./metrics";
 import { getMetaAdSpend, type MetaAdSpend } from "./meta";
 import { cohortBetween } from "./finance";
+import { getOpportunityEvents } from "./opportunity-history";
 import { periodDates, type PeriodRange } from "./periods";
 import { attributedCampaignIds, buildLeadRows, fieldLabelsFrom, type FieldLabels, type LeadRow } from "./leads";
 import { isLang, DEFAULT_LANG, type Lang } from "./i18n";
@@ -30,9 +31,14 @@ export function companyName(): string {
 }
 
 export type LeadData = {
-  /** Leads in the selected period (all of them for Todo), with costs for that window. */
+  /**
+   * Leads with something happening in the period: they arrived, or moved stage
+   * (quoted, won, lost…). All of them for Todo.
+   */
   rows: LeadRow[];
-  /** Every lead, regardless of period. */
+  /** Leads that arrived in the period, costed with the period's spend. */
+  arrivals: LeadRow[];
+  /** Every lead, regardless of period, costed with lifetime spend. */
   allRows: LeadRow[];
   adSpend: MetaAdSpend[];
   currency: string;
@@ -42,18 +48,19 @@ export type LeadData = {
 };
 
 /**
- * CRM leads joined with the Meta spend of the campaigns they came from. For
- * Semana / Mes, `rows` is the cohort that arrived in the period and spend is
- * what those campaigns spent in the period; for Todo, everything and lifetime.
+ * CRM leads joined with the Meta spend of the campaigns they came from and
+ * their stage history. For Semana / Mes, spend is what those campaigns spent
+ * in the period; for Todo, lifetime.
  */
 export async function loadLeadData(range: PeriodRange): Promise<LeadData> {
   const locationId = requireLocationId();
-  const [contacts, opportunities, pipelines, messages, fieldDefs] = await Promise.all([
+  const [contacts, opportunities, pipelines, messages, fieldDefs, history] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
     getAllMessages(locationId),
     getCustomFieldDefs(locationId),
+    getOpportunityEvents(),
   ]);
   const campaignIds = attributedCampaignIds(opportunities);
   const dates = periodDates(range);
@@ -71,11 +78,24 @@ export async function loadLeadData(range: PeriodRange): Promise<LeadData> {
     pipelines,
     messages,
     adSpend: ok(lifetime) ? lifetime.byAd : [],
+    history,
   });
   const adSpend = ok(meta) ? meta.byAd : [];
 
+  let rows = allRows;
+  let arrivals = allRows;
+  if (range.key !== "todo") {
+    arrivals = cohortBetween(allRows, range.start, range.end, adSpend);
+    const arrivedIds = new Set(arrivals.map((r) => r.id));
+    const movedInPeriod = allRows.filter(
+      (r) => !arrivedIds.has(r.id) && r.events.some((e) => e.t >= range.start && e.t < range.end)
+    );
+    rows = [...arrivals, ...movedInPeriod];
+  }
+
   return {
-    rows: range.key === "todo" ? allRows : cohortBetween(allRows, range.start, range.end, adSpend),
+    rows,
+    arrivals,
     allRows,
     adSpend,
     currency: ok(meta) ? meta.currency : "MXN",

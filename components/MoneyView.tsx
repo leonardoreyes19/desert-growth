@@ -55,7 +55,8 @@ export function MoneyView(props: MoneyViewProps) {
     { label: t.invested, get: (l) => money(l.spend) },
     { label: t.leadsCountCol, get: (l) => count(l.leads) },
     { label: t.cplReal, get: (l) => moneyOrDash(l.cpl) },
-    { label: t.quoteRate, get: (l) => pct(l.quoteRate) },
+    // Quotes and arrivals in a period are different leads, so their ratio only makes sense for Todo.
+    ...(info.key === "todo" ? [{ label: t.quoteRate, get: (l: LineFinance) => pct(l.quoteRate) }] : []),
     { label: t.costPerQuote, get: (l) => moneyOrDash(l.costPerQuote) },
     { label: t.avgQuote, get: (l) => moneyOrDash(l.avgQuote) },
     { label: t.quotedOpen, get: (l) => money(l.openQuotedValue) },
@@ -66,12 +67,21 @@ export function MoneyView(props: MoneyViewProps) {
     { label: t.wastedSpend, get: (l) => money(l.wastedSpend) },
   ];
 
-  const funnelLabels = {
-    leads: { label: t.funnelLeads },
-    answered: { label: t.funnelAnswered, hint: t.funnelAnsweredHint },
-    quoted: { label: t.funnelQuoted },
-    won: { label: t.funnelWon },
-  };
+  // With a period the steps are that period's events (not one group of leads narrowing down).
+  const periodMode = info.key !== "todo";
+  const funnelLabels = periodMode
+    ? {
+        leads: { label: t.periodArrivedLeads },
+        answered: { label: t.periodAnswered, hint: t.periodAnsweredHint },
+        quoted: { label: t.periodQuotes },
+        won: { label: t.periodSales },
+      }
+    : {
+        leads: { label: t.funnelLeads },
+        answered: { label: t.funnelAnswered, hint: t.funnelAnsweredHint },
+        quoted: { label: t.funnelQuoted },
+        won: { label: t.funnelWon },
+      };
 
   return (
     <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--page-plane)" }}>
@@ -133,7 +143,9 @@ export function MoneyView(props: MoneyViewProps) {
               icon="alert"
               label={t.wastedSpend}
               value={money(tot.wastedSpend)}
-              sublabel={wastedShare != null ? t.wastedSpendSub(pct(wastedShare)) : undefined}
+              sublabel={
+                info.key !== "todo" ? t.wastedSpendPeriodSub(tot.wastedLeads) : wastedShare != null ? t.wastedSpendSub(pct(wastedShare)) : undefined
+              }
               accent={tot.wastedSpend > 0 ? "warning" : "neutral"}
             />
             <StatTile
@@ -183,17 +195,17 @@ export function MoneyView(props: MoneyViewProps) {
         </section>
 
         <section>
-          <SectionLabel>{t.funnelTitle}</SectionLabel>
+          <SectionLabel>{periodMode ? t.periodActivityTitle : t.funnelTitle}</SectionLabel>
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
             <Funnel
-              title={t.funnelTitle}
+              title={periodMode ? t.periodActivityTitle : t.funnelTitle}
               steps={finance.funnel.map((s) => ({
                 ...funnelLabels[s.key],
                 count: s.count,
                 valueLabel: s.value > 0 ? money(s.value) : undefined,
               }))}
               formatCount={count}
-              ofPrevious={t.funnelOfPrev}
+              ofPrevious={periodMode ? undefined : t.funnelOfPrev}
             />
             <BarChart
               title={t.valueByStage}

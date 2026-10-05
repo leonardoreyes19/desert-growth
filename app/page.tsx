@@ -21,6 +21,8 @@ import {
 import { getMetaInsights } from "@/lib/meta";
 import { DEFAULT_PERIOD, SUMMARY_PERIODS, periodDates, periodFromParams, periodInfo } from "@/lib/periods";
 import { pipelineHistoryFor, recordPipelineSnapshot } from "@/lib/snapshots";
+import { getOpportunityEvents } from "@/lib/opportunity-history";
+import { opportunityTiming } from "@/lib/opportunity-state";
 import { isLang, DEFAULT_LANG, type Lang } from "@/lib/i18n";
 import { Dashboard } from "@/components/Dashboard";
 
@@ -46,14 +48,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const rawTag = params.tag;
   const range = periodFromParams(params, SUMMARY_PERIODS, DEFAULT_PERIOD);
 
-  const [ghlContacts, allOpportunities, pipelines, allMessages, meta, history] = await Promise.all([
+  const [ghlContacts, allOpportunities, pipelines, allMessages, meta, history, eventLog] = await Promise.all([
     getAllContacts(locationId),
     getAllOpportunities(locationId),
     getPipelines(locationId),
     getAllMessages(locationId),
     getMetaInsights(periodDates(range)),
     pipelineHistoryFor(range),
+    getOpportunityEvents(),
   ]);
+  const timing = eventLog ? opportunityTiming(eventLog) : undefined;
 
   const allContacts = excludeBulkImports(ghlContacts);
   const availableTags = distinctTags(allContacts);
@@ -71,8 +75,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const byStage = pipelineByStage(opportunities, pipelines);
   const byPipeline = opportunitiesByPipeline(opportunities, pipelines);
   const conversion = conversionSummary(opportunities, pipelines);
-  const periodConversion = conversionBetween(opportunities, pipelines, range.start, range.end);
-  const prevPeriodConversion = conversionBetween(opportunities, pipelines, range.prevStart, range.prevSamePoint);
+  const periodConversion = conversionBetween(opportunities, pipelines, range.start, range.end, timing);
+  const prevPeriodConversion = conversionBetween(opportunities, pipelines, range.prevStart, range.prevSamePoint, timing);
   const responseTime = firstTouchResponseTime(contacts, messages, range.start, range.end);
   const newLeads = leadsInPeriod(contacts, range);
   const livePipeline = pipelineSnapshot(opportunities, pipelines);
@@ -81,7 +85,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const pipelineHistory = selectedTag ? null : history;
   // A finished month shows the pipeline as it stood when that month closed.
   const closedPipeline = range.isPast && pipelineHistory?.configured ? pipelineHistory.atEnd : null;
-  const stalled = stalledOpenOpportunities(opportunities, pipelines, 14);
+  const stalled = stalledOpenOpportunities(opportunities, pipelines, 14, timing);
 
   const companyName = process.env.REPORT_COMPANY_NAME || "Nombre de empresa pendiente";
 

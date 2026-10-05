@@ -164,20 +164,23 @@ export function conversionSummary(opportunities: GhlOpportunity[], pipelines: Gh
 export type PeriodConversion = { won: number; lost: number; winRate: number | null };
 
 /**
- * Deals won or lost within [from, to) — dated by the opportunity's last stage
- * or status change, whichever came later (that's when it was closed).
+ * Deals won or lost within [from, to) — dated from the stage history when
+ * available (`timing`), else by the last stage or status change.
  */
 export function conversionBetween(
   opportunities: GhlOpportunity[],
   pipelines: GhlPipeline[],
   from: number,
-  to: number
+  to: number,
+  timing?: Map<string, { closedAt: number | null }>
 ): PeriodConversion {
   const { isWon, isLost } = stageClassifier(pipelines);
   let won = 0;
   let lost = 0;
   for (const o of opportunities) {
-    const closedAt = Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
+    const closedAt =
+      timing?.get(o.id)?.closedAt ??
+      Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
     if (closedAt < from || closedAt >= to) continue;
     if (isWon(o)) won++;
     else if (isLost(o)) lost++;
@@ -302,7 +305,9 @@ export type StalledSummary = {
 export function stalledOpenOpportunities(
   opportunities: GhlOpportunity[],
   pipelines: GhlPipeline[],
-  thresholdDays = 14
+  thresholdDays = 14,
+  /** When each deal really entered its stage (bulk round-trip moves ignored); else GHL's lastStageChangeAt. */
+  timing?: Map<string, { stageSince: number }>
 ): StalledSummary {
   const { stageName, isWon, isLost } = stageClassifier(pipelines);
   // A sent quote is waiting on the customer, not on us — it doesn't count as stalled.
@@ -313,7 +318,7 @@ export function stalledOpenOpportunities(
   const perStage = new Map<string, number>();
 
   for (const o of open) {
-    const changedAt = new Date(o.lastStageChangeAt).getTime();
+    const changedAt = timing?.get(o.id)?.stageSince ?? new Date(o.lastStageChangeAt).getTime();
     const ageDays = (now - changedAt) / 86_400_000;
     if (ageDays >= thresholdDays) {
       stalledCount++;
