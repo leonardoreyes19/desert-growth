@@ -145,9 +145,9 @@ export default function WeeklyReport({
                   </tr>
                   <tr>
                     <StatCell
-                      label="Tiempo típico para contestar"
-                      value={formatMinutes(responseTime.medianMinutes)}
-                      sublabel="la mitad de los leads recibió respuesta en menos"
+                      label="Tiempo promedio para contestar"
+                      value={formatMinutes(responseTime.avgMinutes)}
+                      sublabel={`promedio de ${responseTime.repliedCount} leads respondidos`}
                     />
                     <StatCell
                       label="Leads estancados"
@@ -197,7 +197,7 @@ export default function WeeklyReport({
 
             <Hr style={{ borderColor: BORDER, borderTop: "1px solid", margin: "24px 0 12px" }} />
             <Text style={{ fontSize: 11, color: MUTED, margin: 0, lineHeight: "16px" }}>
-              &ldquo;Tiempo típico para contestar&rdquo; es la mediana del tiempo entre que llega un lead y el primer
+              &ldquo;Tiempo promedio para contestar&rdquo; es el promedio del tiempo entre que llega un lead y el primer
               mensaje que una persona le manda desde el CRM o el WhatsApp conectado (sin contar mensajes automáticos).
               Reporte generado automáticamente desde GoHighLevel.
             </Text>
@@ -228,7 +228,7 @@ WeeklyReport.PreviewProps = {
   conversion: { total: 180, won: 5, lost: 2, open: 173, winRate: 0.71 },
   responseTime: {
     trackingSince: "2026-09-28T00:00:00-07:00",
-    medianMinutes: 12,
+    avgMinutes: 12,
     repliedCount: 9,
     settledCount: 10,
     under5min: 4,

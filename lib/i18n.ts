@@ -51,7 +51,7 @@ type Dict = {
   newLeadsPerDay: string;
   metaSpend: string;
   closeRate: string;
-  medianFirstContact: string;
+  avgReplyTime: string;
   overLeadsReplied: (n: number) => string;
   overSettledLeads: (n: number, since: string) => string;
   notEnoughData: string;
@@ -160,9 +160,8 @@ export const dictionaries: Record<Lang, Dict> = {
     newLeadsPerDay: "Leads nuevos por día (este periodo y el anterior)",
     metaSpend: "Inversión",
     closeRate: "Tasa de cierre",
-    medianFirstContact: "Tiempo típico para contestar",
-    overLeadsReplied: (n) =>
-      n === 1 ? "Lo que tardó el equipo en contestarle a 1 lead" : `La mitad de ${n} leads recibió respuesta en menos de esto`,
+    avgReplyTime: "Tiempo promedio para contestar",
+    overLeadsReplied: (n) => (n === 1 ? "Lo que tardó el equipo en contestarle a 1 lead" : `Promedio de ${n} leads respondidos`),
     overSettledLeads: (n, since) => `de ${n} ${n === 1 ? "lead" : "leads"} de más de 24 h, desde el ${since}`,
     notEnoughData: "sin datos suficientes todavía",
 
@@ -213,7 +212,7 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponse24h: "Sin respuesta después de 24 horas",
 
     firstContactFootnote:
-      "“Tiempo típico para contestar” y “Velocidad de respuesta” miden el tiempo entre la creación del lead y el primer mensaje que una persona le envía desde el CRM o el WhatsApp conectado (no cuentan los mensajes automáticos). Solo incluyen leads desde el 28 de septiembre de 2026, cuando se conectó WhatsApp; las respuestas hechas fuera del CRM no se ven.",
+      "“Tiempo promedio para contestar” y “Velocidad de respuesta” miden el tiempo entre la creación del lead y el primer mensaje que una persona le envía desde el CRM o el WhatsApp conectado (no cuentan los mensajes automáticos). Solo incluyen leads desde el 28 de septiembre de 2026, cuando se conectó WhatsApp; las respuestas hechas fuera del CRM no se ven.",
 
     viewTable: "Ver tabla",
     viewChart: "Ver gráfica",
@@ -272,8 +271,8 @@ export const dictionaries: Record<Lang, Dict> = {
     newLeadsPerDay: "New leads per day (this period and the previous one)",
     metaSpend: "Spend",
     closeRate: "Close rate",
-    medianFirstContact: "Typical time to reply",
-    overLeadsReplied: (n) => (n === 1 ? "How long the team took to answer 1 lead" : `Half of ${n} leads got a reply faster than this`),
+    avgReplyTime: "Average time to reply",
+    overLeadsReplied: (n) => (n === 1 ? "How long the team took to answer 1 lead" : `Average over ${n} answered leads`),
     overSettledLeads: (n, since) => `of ${n} ${n === 1 ? "lead" : "leads"} older than 24 h, since ${since}`,
     notEnoughData: "not enough data yet",
 
@@ -324,7 +323,7 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponse24h: "No response after 24 hours",
 
     firstContactFootnote:
-      "“Typical time to reply” and “Response speed” measure the time between lead creation and the first message a person sends from the CRM or the connected WhatsApp (automated messages don't count). They only include leads since September 28, 2026, when WhatsApp was connected; replies sent outside the CRM aren't visible.",
+      "“Average time to reply” and “Response speed” measure the time between lead creation and the first message a person sends from the CRM or the connected WhatsApp (automated messages don't count). They only include leads since September 28, 2026, when WhatsApp was connected; replies sent outside the CRM aren't visible.",
 
     viewTable: "View table",
     viewChart: "View chart",

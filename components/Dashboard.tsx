@@ -435,8 +435,8 @@ export function Dashboard(props: DashboardProps) {
               accent="warning"
             />
             <StatTile
-              icon="clock" label={t.medianFirstContact}
-              value={formatMinutes(responseTime.medianMinutes)}
+              icon="clock" label={t.avgReplyTime}
+              value={formatMinutes(responseTime.avgMinutes)}
               sublabel={responseTime.repliedCount > 0 ? t.overLeadsReplied(responseTime.repliedCount) : t.notEnoughData}
               accent="good"
             />

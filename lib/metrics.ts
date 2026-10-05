@@ -239,8 +239,8 @@ export const RESPONSE_TRACKING_SINCE = "2026-09-28T00:00:00-07:00";
 
 export type ResponseTimeSummary = {
   trackingSince: string;
-  /** Median minutes to first human reply, over leads that got one. */
-  medianMinutes: number | null;
+  /** Average minutes to first human reply, over leads that got one. */
+  avgMinutes: number | null;
   repliedCount: number;
   /** Leads at least 24h old — each has had a full day to be answered. The percentages below are over these. */
   settledCount: number;
@@ -278,15 +278,12 @@ export function firstTouchResponseTime(
     if (minutes === null || minutes > 1440) noReplyIn24h++;
   }
 
-  const sorted = replyMinutes.sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const medianMinutes =
-    sorted.length === 0 ? null : sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  const avgMinutes = replyMinutes.length === 0 ? null : replyMinutes.reduce((sum, m) => sum + m, 0) / replyMinutes.length;
 
   return {
     trackingSince: new Date(since).toISOString(),
-    medianMinutes,
-    repliedCount: sorted.length,
+    avgMinutes,
+    repliedCount: replyMinutes.length,
     settledCount,
     under5min,
     under1hour,
