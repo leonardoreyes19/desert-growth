@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ToggleGroup } from "radix-ui";
 import { getDict, localeFor, type Lang } from "@/lib/i18n";
 import { setClientCookie, setHtmlThemeAttribute } from "@/lib/client-cookies";
@@ -95,6 +95,8 @@ const NAV = [
 
 function NavTabs({ t }: { t: Dict }) {
   const pathname = usePathname();
+  // Keep the chosen period when switching tabs (Resumen has no "todo", so it falls back to its default there).
+  const period = useSearchParams().get("periodo");
   return (
     <nav
       className="inline-flex rounded-full p-1 gap-0.5 w-fit max-w-full overflow-x-auto"
@@ -105,7 +107,7 @@ function NavTabs({ t }: { t: Dict }) {
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={period ? `${item.href}?periodo=${encodeURIComponent(period)}` : item.href}
             aria-current={active ? "page" : undefined}
             className="text-sm font-medium px-4 py-1.5 rounded-full transition-all whitespace-nowrap"
             style={{

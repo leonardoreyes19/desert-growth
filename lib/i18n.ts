@@ -1,5 +1,5 @@
 import { extraDictionaries, type ExtraDict } from "./i18n-extra";
-import type { PeriodKey } from "./periods";
+import type { PeriodKey, SummaryPeriod } from "./periods";
 
 export type Lang = "es" | "en";
 
@@ -30,10 +30,11 @@ type Dict = {
   periodLabel: string;
   periodOption: Record<PeriodKey, string>;
   periodRangeCaption: (since: string) => string;
-  leadsInPeriod: Record<PeriodKey, string>;
-  newLeadsInPeriod: Record<PeriodKey, string>;
-  vsPrevSamePoint: (period: PeriodKey, value: string) => string;
-  vsPrevClose: (period: PeriodKey, value: string) => string;
+  allTime: string;
+  leadsInPeriod: Record<SummaryPeriod, string>;
+  newLeadsInPeriod: Record<SummaryPeriod, string>;
+  vsPrevSamePoint: (period: SummaryPeriod, value: string) => string;
+  vsPrevClose: (period: SummaryPeriod, value: string) => string;
   closedInPeriod: (won: number, lost: number, open: number) => string;
   noneClosedInPeriod: (open: number) => string;
   currentStateNote: string;
@@ -124,7 +125,8 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponseLeads: "Sin respuesta",
     noResponseLeadsSublabel: "Leads abiertos en la etapa Sin respuesta",
     periodLabel: "Periodo",
-    periodOption: { semana: "Semana", mes: "Mes" },
+    periodOption: { semana: "Semana", mes: "Mes", todo: "Todo" },
+    allTime: "Desde el primer lead",
     periodRangeCaption: (since) => `Del ${since} a hoy`,
     leadsInPeriod: { semana: "Leads esta semana", mes: "Leads este mes" },
     newLeadsInPeriod: { semana: "Leads nuevos esta semana", mes: "Leads nuevos este mes" },
@@ -224,7 +226,8 @@ export const dictionaries: Record<Lang, Dict> = {
     noResponseLeads: "No response",
     noResponseLeadsSublabel: "Open leads in the No response stage",
     periodLabel: "Period",
-    periodOption: { semana: "Week", mes: "Month" },
+    periodOption: { semana: "Week", mes: "Month", todo: "All" },
+    allTime: "Since the first lead",
     periodRangeCaption: (since) => `From ${since} to today`,
     leadsInPeriod: { semana: "Leads this week", mes: "Leads this month" },
     newLeadsInPeriod: { semana: "New leads this week", mes: "New leads this month" },

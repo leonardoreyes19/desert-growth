@@ -240,12 +240,12 @@ export type MetaLifetimeSpend =
   | { configured: true; error?: undefined; currency: string; byAd: MetaAdSpend[] };
 
 /**
- * Lifetime (date_preset=maximum) spend per ad for the given campaigns — the
+ * Spend per ad (lifetime, or for a date range) for the given campaigns — the
  * ones CRM leads are attributed to via their utm campaign id. Used to compute
  * real cost per lead / quote / sale against CRM outcomes. Same fail-safe
  * contract as getMetaInsights().
  */
-async function fetchMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
+async function fetchMetaAdSpend(campaignIds: string[], dates: { since: string; until: string } | null): Promise<MetaLifetimeSpend> {
   const token = process.env.META_ACCESS_TOKEN?.trim();
   const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
   if (!token || !rawAccount) return { configured: false };
@@ -254,7 +254,7 @@ async function fetchMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifeti
   const account = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
   try {
     const rows = (await graphGet(`${account}/insights`, {
-      date_preset: "maximum",
+      ...(dates ? { time_range: JSON.stringify(dates) } : { date_preset: "maximum" }),
       level: "ad",
       fields: "ad_id,ad_name,campaign_id,campaign_name,spend,account_currency",
       filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: campaignIds }]),
@@ -285,7 +285,9 @@ export function getMetaInsights(dates: MetaDates): Promise<MetaInsights> {
   return cached(key, () => fetchMetaInsights(dates), { keep: keepUnlessError });
 }
 
-export function getMetaLifetimeSpend(campaignIds: string[]): Promise<MetaLifetimeSpend> {
-  const key = `meta:lifetime:${[...campaignIds].sort().join(",")}`;
-  return cached(key, () => fetchMetaLifetimeSpend(campaignIds), { keep: keepUnlessError });
+/** Spend per ad for the given campaigns: lifetime, or between two Hermosillo dates. */
+export function getMetaAdSpend(campaignIds: string[], dates: { since: string; until: string } | null = null): Promise<MetaLifetimeSpend> {
+  const range = dates ? `${dates.since}:${dates.until}` : "lifetime";
+  const key = `meta:adspend:${range}:${[...campaignIds].sort().join(",")}`;
+  return cached(key, () => fetchMetaAdSpend(campaignIds, dates), { keep: keepUnlessError });
 }

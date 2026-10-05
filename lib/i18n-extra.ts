@@ -11,6 +11,10 @@ const es = {
   moneyTitle: "Dinero: inversión, retorno y pérdidas",
   moneySubtitle: (since: string) =>
     `Desde el primer lead de campaña (${since}) · inversión real de Meta cruzada con cada lead del CRM`,
+  moneyPeriodSubtitle: (since: string) =>
+    `Leads que llegaron desde el ${since} y lo que Meta gastó en ese mismo tiempo · inversión real de Meta cruzada con cada lead del CRM`,
+  cohortNote:
+    "Cada lead cuenta con su etapa de hoy: los de este periodo todavía pueden cotizarse o venderse, así que ventas y retorno suben con los días.",
   moneyNeedsMeta:
     "Conecta Meta Ads para ver inversión, costos por resultado y dinero perdido. Por ahora solo se muestran los montos cotizados en el CRM.",
   moneyMetaError: (msg: string) => `No se pudo leer la inversión de Meta Ads (${msg}). Los costos aparecen en cero.`,
@@ -172,6 +176,10 @@ const en: ExtraDict = {
 
   moneyTitle: "Money: spend, return and losses",
   moneySubtitle: (since) => `Since the first campaign lead (${since}) · real Meta spend matched to each CRM lead`,
+  moneyPeriodSubtitle: (since) =>
+    `Leads that arrived since ${since} and what Meta spent in that same time · real Meta spend matched to each CRM lead`,
+  cohortNote:
+    "Each lead counts with today's stage: leads from this period can still be quoted or sold, so sales and return grow over the days.",
   moneyNeedsMeta:
     "Connect Meta Ads to see spend, cost per result and lost money. For now only CRM quote amounts are shown.",
   moneyMetaError: (msg) => `Couldn't read Meta Ads spend (${msg}). Costs show as zero.`,

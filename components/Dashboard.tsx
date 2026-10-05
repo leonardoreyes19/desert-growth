@@ -15,7 +15,8 @@ import type {
   PeriodConversion,
   WeekOverWeek,
 } from "@/lib/metrics";
-import { DEFAULT_PERIOD, PERIOD_KEYS, periodRange, type PeriodKey } from "@/lib/periods";
+import { DEFAULT_PERIOD, SUMMARY_PERIODS, periodRange, type SummaryPeriod } from "@/lib/periods";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import type { MetaInsights } from "@/lib/meta";
 import type { PipelineHistory } from "@/lib/snapshots";
 import type { Lang } from "@/lib/i18n";
@@ -33,7 +34,7 @@ export type DashboardProps = {
   contactsCount: number;
   opportunitiesCount: number;
   generatedAtIso: string;
-  period: PeriodKey;
+  period: SummaryPeriod;
   newLeads: WeekOverWeek;
   pipeline: PipelineSnapshot;
   /** Pipeline at the start of the period; null when a tag filter is active (history covers the whole pipeline). */
@@ -54,43 +55,6 @@ export type DashboardProps = {
   initialLang: Lang;
   initialTheme: Theme;
 };
-
-function PeriodFilter({
-  selected,
-  onChange,
-  label,
-  options,
-}: {
-  selected: PeriodKey;
-  onChange: (period: PeriodKey) => void;
-  label: string;
-  options: Record<PeriodKey, string>;
-}) {
-  return (
-    <ToggleGroup.Root
-      type="single"
-      value={selected}
-      onValueChange={(next) => next && onChange(next as PeriodKey)}
-      aria-label={label}
-      className="inline-flex p-1 rounded-full"
-      style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)", boxShadow: "var(--card-shadow)" }}
-    >
-      {PERIOD_KEYS.map((key) => (
-        <ToggleGroup.Item
-          key={key}
-          value={key}
-          className="text-sm font-medium px-4 py-1.5 rounded-full transition-colors outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--series-1)]"
-          style={{
-            color: selected === key ? "#ffffff" : "var(--text-secondary)",
-            background: selected === key ? "var(--series-1)" : "transparent",
-          }}
-        >
-          {options[key]}
-        </ToggleGroup.Item>
-      ))}
-    </ToggleGroup.Root>
-  );
-}
 
 function TagFilter({
   tags,
@@ -184,7 +148,7 @@ function formatPlacementLabel(segment: string): string {
   return position ? `${platformLabel} · ${position}` : platformLabel;
 }
 
-function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; period: PeriodKey; t: Dict; locale: string }) {
+function MetaAdsPanel({ meta, period, t, locale }: { meta: MetaInsightsOk; period: SummaryPeriod; t: Dict; locale: string }) {
   const money = (n: number) =>
     new Intl.NumberFormat(locale, { style: "currency", currency: meta.currency, maximumFractionDigits: 0 }).format(n);
   const money2 = (n: number) =>
@@ -348,7 +312,7 @@ export function Dashboard(props: DashboardProps) {
   const shownTag = isFiltering ? requested.tag : selectedTag;
   const shownPeriod = isFiltering ? requested.period : period;
 
-  function navigate(next: { tag: string | null; period: PeriodKey }) {
+  function navigate(next: { tag: string | null; period: SummaryPeriod }) {
     const params = new URLSearchParams();
     if (next.period !== DEFAULT_PERIOD) params.set("periodo", next.period);
     if (next.tag) params.set("tag", next.tag);
@@ -404,6 +368,7 @@ export function Dashboard(props: DashboardProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <PeriodFilter
+            periods={SUMMARY_PERIODS}
             selected={shownPeriod}
             onChange={(p) => navigate({ tag: shownTag, period: p })}
             label={t.periodLabel}

@@ -10,11 +10,16 @@ import { BarChart } from "@/components/BarChart";
 import { Funnel } from "@/components/Funnel";
 import { Panel, Td, Th } from "@/components/Panel";
 import { SectionLabel } from "@/components/SectionLabel";
+import { PeriodBar, usePeriodSwitch } from "@/components/PeriodFilter";
+import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodKey } from "@/lib/periods";
 
 export type MoneyViewProps = {
   companyName: string;
   generatedAtIso: string;
   currency: string;
+  period: PeriodKey;
+  /** Start of the selected period; null for Todo. */
+  periodStartIso: string | null;
   finance: FinanceSummary;
   metaConfigured: boolean;
   metaError: string | null;
@@ -23,9 +28,11 @@ export type MoneyViewProps = {
 };
 
 export function MoneyView(props: MoneyViewProps) {
-  const { companyName, generatedAtIso, currency, finance, metaConfigured, metaError, initialLang, initialTheme } = props;
+  const { companyName, generatedAtIso, currency, period, periodStartIso, finance, metaConfigured, metaError, initialLang, initialTheme } =
+    props;
   const prefs = usePrefs(initialLang, initialTheme);
   const { t, locale } = prefs;
+  const periodSwitch = usePeriodSwitch(period, DEFAULT_TAB_PERIOD);
 
   const money = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
   const money2 = (n: number) => new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
@@ -35,9 +42,10 @@ export function MoneyView(props: MoneyViewProps) {
   const roasText = (n: number | null) => (n == null ? t.noValue : `${n.toLocaleString(locale, { maximumFractionDigits: 1 })}x`);
 
   const tot = finance.totals;
-  const since = finance.firstCampaignDate
-    ? new Date(finance.firstCampaignDate).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "America/Hermosillo" })
-    : t.noValue;
+  const dateLabel = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "America/Hermosillo" });
+  const subtitle = periodStartIso
+    ? t.moneyPeriodSubtitle(dateLabel(periodStartIso))
+    : t.moneySubtitle(finance.firstCampaignDate ? dateLabel(finance.firstCampaignDate) : t.noValue);
   const wastedShare = tot.spend > 0 ? tot.wastedSpend / tot.spend : null;
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value };
 
@@ -66,8 +74,21 @@ export function MoneyView(props: MoneyViewProps) {
 
   return (
     <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--page-plane)" }}>
-      <AppHeader companyName={companyName} title={t.moneyTitle} subtitle={t.moneySubtitle(since)} generatedAtIso={generatedAtIso} prefs={prefs} />
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1">
+      <AppHeader companyName={companyName} title={t.moneyTitle} subtitle={subtitle} generatedAtIso={generatedAtIso} prefs={prefs} />
+      <main
+        className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-10 flex-1 transition-opacity"
+        style={{ opacity: periodSwitch.pending ? 0.55 : 1, cursor: periodSwitch.pending ? "progress" : undefined }}
+        aria-busy={periodSwitch.pending}
+      >
+        <PeriodBar
+          periods={TAB_PERIODS}
+          selected={periodSwitch.shown}
+          onChange={periodSwitch.change}
+          periodStartIso={periodStartIso}
+          t={t}
+          locale={locale}
+          note={periodStartIso ? t.cohortNote : undefined}
+        />
 
         {(!metaConfigured || metaError) && (
           <div

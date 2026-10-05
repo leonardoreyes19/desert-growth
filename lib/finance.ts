@@ -56,6 +56,24 @@ export type FinanceSummary = {
   firstCampaignDate: string | null;
 };
 
+/**
+ * Leads that arrived since `start`, with each one's estimated cost redone for
+ * that window: what its campaign spent in the window ÷ the campaign's leads
+ * that arrived in the window.
+ */
+export function cohortSince(rows: LeadRow[], start: number, windowSpend: MetaAdSpend[]): LeadRow[] {
+  const cohort = rows.filter((r) => new Date(r.dateAdded).getTime() >= start);
+  const spendByCampaign = new Map<string, number>();
+  for (const a of windowSpend) spendByCampaign.set(a.campaignId, (spendByCampaign.get(a.campaignId) ?? 0) + a.spend);
+  const leadsByCampaign = new Map<string, number>();
+  for (const r of cohort) if (r.campaignId && r.stage) leadsByCampaign.set(r.campaignId, (leadsByCampaign.get(r.campaignId) ?? 0) + 1);
+  return cohort.map((r) => {
+    const spend = r.campaignId ? spendByCampaign.get(r.campaignId) : undefined;
+    const leads = r.campaignId ? leadsByCampaign.get(r.campaignId) : undefined;
+    return { ...r, estCost: spend !== undefined && leads ? spend / leads : 0 };
+  });
+}
+
 const isQuoted = (r: LeadRow) => QUOTED_BUCKETS.includes(r.bucket) || (r.bucket === "lost" && r.value > 0);
 
 function lineFinance(rows: LeadRow[], spend: number): LineFinance {
@@ -89,7 +107,13 @@ function lineFinance(rows: LeadRow[], spend: number): LineFinance {
   };
 }
 
-export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], atRiskDays = 14): FinanceSummary {
+/**
+ * `rows` are the leads being analysed (all of them, or one period's cohort) and
+ * `adSpend` the Meta spend for the same window. `allRows` is only used to know
+ * which campaigns belong to which product line, so a campaign that spent money
+ * in the window still counts even if none of its leads arrived in it.
+ */
+export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], allRows: LeadRow[] = rows, atRiskDays = 14): FinanceSummary {
   // Only CRM opportunities count as leads here (a handful of contacts have none).
   const leads = rows.filter((r) => r.stage !== null);
 
@@ -100,8 +124,10 @@ export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], atRiskDa
   const byLine: Partial<Record<ProductLine, LineFinance>> = {};
   for (const line of lines) {
     const lineRows = leads.filter((r) => r.line === line);
-    if (lineRows.length === 0) continue;
-    const campaigns = new Set(lineRows.map((r) => r.campaignId).filter((id): id is string => !!id));
+    const campaigns = new Set(
+      allRows.filter((r) => r.stage !== null && r.line === line).map((r) => r.campaignId).filter((id): id is string => !!id)
+    );
+    if (lineRows.length === 0 && campaigns.size === 0) continue;
     const spend = [...campaigns].reduce((s, id) => s + (spendByCampaign.get(id) ?? 0), 0);
     byLine[line] = lineFinance(lineRows, spend);
   }
@@ -148,7 +174,7 @@ export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], atRiskDa
       adAgg.get(r.adId) ??
       {
         adId: r.adId,
-        adName: meta?.adName ?? r.adId,
+        adName: meta?.adName ?? r.adName ?? r.adId,
         line: r.line,
         spend: meta?.spend ?? 0,
         leads: 0,

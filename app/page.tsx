@@ -19,7 +19,7 @@ import {
   stalledOpenOpportunities,
 } from "@/lib/metrics";
 import { getMetaInsights } from "@/lib/meta";
-import { DEFAULT_PERIOD, isPeriodKey, periodDates, periodRange } from "@/lib/periods";
+import { DEFAULT_PERIOD, isSummaryPeriod, periodDates, periodRange } from "@/lib/periods";
 import { pipelineAtPeriodStart, recordPipelineSnapshot } from "@/lib/snapshots";
 import { isLang, DEFAULT_LANG, type Lang } from "@/lib/i18n";
 import { Dashboard } from "@/components/Dashboard";
@@ -43,7 +43,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const initialTheme = cookieTheme === "dark" ? "dark" : "light";
 
   const { tag: rawTag, periodo: rawPeriod } = await searchParams;
-  const period = isPeriodKey(rawPeriod) ? rawPeriod : DEFAULT_PERIOD;
+  const period = isSummaryPeriod(rawPeriod) ? rawPeriod : DEFAULT_PERIOD;
   const range = periodRange(period);
 
   const [ghlContacts, allOpportunities, pipelines, allMessages, meta, periodStartHistory] = await Promise.all([

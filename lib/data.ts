@@ -2,7 +2,9 @@ import "server-only";
 import { cookies } from "next/headers";
 import { getAllContacts, getAllMessages, getAllOpportunities, getCustomFieldDefs, getPipelines } from "./ghl";
 import { excludeBulkImports } from "./metrics";
-import { getMetaLifetimeSpend, type MetaAdSpend } from "./meta";
+import { getMetaAdSpend, type MetaAdSpend } from "./meta";
+import { cohortSince } from "./finance";
+import { periodDates, type PeriodRange } from "./periods";
 import { attributedCampaignIds, buildLeadRows, fieldLabelsFrom, type FieldLabels, type LeadRow } from "./leads";
 import { isLang, DEFAULT_LANG, type Lang } from "./i18n";
 
@@ -28,7 +30,10 @@ export function companyName(): string {
 }
 
 export type LeadData = {
+  /** Leads in the selected period (all of them for Todo), with costs for that window. */
   rows: LeadRow[];
+  /** Every lead, regardless of period. */
+  allRows: LeadRow[];
   adSpend: MetaAdSpend[];
   currency: string;
   metaError: string | null;
@@ -36,8 +41,12 @@ export type LeadData = {
   fieldLabels: FieldLabels;
 };
 
-/** CRM leads joined with lifetime Meta spend of the campaigns they came from. */
-export async function loadLeadData(): Promise<LeadData> {
+/**
+ * CRM leads joined with the Meta spend of the campaigns they came from. For
+ * Semana / Mes, `rows` is the cohort that arrived in the period and spend is
+ * what those campaigns spent in the period; for Todo, everything and lifetime.
+ */
+export async function loadLeadData(range: PeriodRange): Promise<LeadData> {
   const locationId = requireLocationId();
   const [contacts, opportunities, pipelines, messages, fieldDefs] = await Promise.all([
     getAllContacts(locationId),
@@ -46,13 +55,30 @@ export async function loadLeadData(): Promise<LeadData> {
     getAllMessages(locationId),
     getCustomFieldDefs(locationId),
   ]);
-  const meta = await getMetaLifetimeSpend(attributedCampaignIds(opportunities));
-  const adSpend = meta.configured && meta.error === undefined ? meta.byAd : [];
+  const campaignIds = attributedCampaignIds(opportunities);
+  const dates = periodDates(range);
+  const [lifetime, windowed] = await Promise.all([
+    getMetaAdSpend(campaignIds),
+    range.key === "todo" ? null : getMetaAdSpend(campaignIds, { since: dates.since, until: dates.until }),
+  ]);
+  const meta = windowed ?? lifetime;
+  const ok = (m: typeof meta): m is Extract<typeof meta, { byAd: MetaAdSpend[] }> => m.configured && m.error === undefined;
+
+  const allRows = buildLeadRows({
+    locationId,
+    contacts: excludeBulkImports(contacts),
+    opportunities,
+    pipelines,
+    messages,
+    adSpend: ok(lifetime) ? lifetime.byAd : [],
+  });
+  const adSpend = ok(meta) ? meta.byAd : [];
 
   return {
-    rows: buildLeadRows({ locationId, contacts: excludeBulkImports(contacts), opportunities, pipelines, messages, adSpend }),
+    rows: range.key === "todo" ? allRows : cohortSince(allRows, range.start, adSpend),
+    allRows,
     adSpend,
-    currency: meta.configured && meta.error === undefined ? meta.currency : "MXN",
+    currency: ok(meta) ? meta.currency : "MXN",
     metaError: meta.configured && meta.error !== undefined ? meta.error : null,
     metaConfigured: meta.configured,
     fieldLabels: fieldLabelsFrom(fieldDefs),

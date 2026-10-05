@@ -1,13 +1,21 @@
 import { hermosilloDate, startOfMonth, startOfWeek } from "./metrics";
 
-/** The Resumen's reporting window, picked with the Semana / Mes filter. */
-export type PeriodKey = "semana" | "mes";
+/** Reporting window. Resumen offers Semana / Mes; Dinero and Leads also offer Todo (since the first lead). */
+export type SummaryPeriod = "semana" | "mes";
+export type PeriodKey = SummaryPeriod | "todo";
 
-export const PERIOD_KEYS: PeriodKey[] = ["semana", "mes"];
-export const DEFAULT_PERIOD: PeriodKey = "semana";
+export const SUMMARY_PERIODS: SummaryPeriod[] = ["semana", "mes"];
+export const TAB_PERIODS: PeriodKey[] = ["semana", "mes", "todo"];
+export const DEFAULT_PERIOD: SummaryPeriod = "semana";
+/** Dinero and Leads default to everything, as they did before the filter existed. */
+export const DEFAULT_TAB_PERIOD: PeriodKey = "todo";
+
+export function isSummaryPeriod(v: string | undefined | null): v is SummaryPeriod {
+  return v === "semana" || v === "mes";
+}
 
 export function isPeriodKey(v: string | undefined | null): v is PeriodKey {
-  return v === "semana" || v === "mes";
+  return isSummaryPeriod(v) || v === "todo";
 }
 
 export type PeriodRange = {
@@ -22,8 +30,12 @@ export type PeriodRange = {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Semana: since Monday. Mes: since the 1st. Each compares against the period right before it, up to the same point. */
+/**
+ * Semana: since Monday. Mes: since the 1st. Each compares against the period
+ * right before it, up to the same point. Todo: everything (start 0).
+ */
 export function periodRange(key: PeriodKey, now = Date.now()): PeriodRange {
+  if (key === "todo") return { key, start: 0, prevStart: 0, prevSamePoint: 0 };
   if (key === "mes") {
     const start = startOfMonth(now);
     const prevStart = startOfMonth(now, 1);

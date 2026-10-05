@@ -8,6 +8,8 @@ import { formatMinutes } from "@/lib/metrics";
 import { AppHeader, usePrefs, type Dict, type Theme } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
 import { FilterSelect } from "@/components/FilterSelect";
+import { PeriodBar, usePeriodSwitch } from "@/components/PeriodFilter";
+import { DEFAULT_TAB_PERIOD, TAB_PERIODS, type PeriodKey } from "@/lib/periods";
 import { Icon } from "@/components/icons";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/Panel";
@@ -26,6 +28,9 @@ export type LeadsViewProps = {
   generatedAtIso: string;
   currency: string;
   rows: LeadRow[];
+  period: PeriodKey;
+  /** Start of the selected period; null for Todo. */
+  periodStartIso: string | null;
   fieldLabels: FieldLabels;
   initialFilters: LeadFilters;
   initialLang: Lang;
@@ -139,6 +144,9 @@ function countBy<T>(items: T[], keysOf: (item: T) => string[]): [string, number]
 
 function syncUrl(filters: LeadFilters) {
   const params = new URLSearchParams();
+  // The period is server-side (it changes the rows and their costs), so keep it as-is.
+  const period = new URLSearchParams(window.location.search).get("periodo");
+  if (period) params.set("periodo", period);
   for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
   const qs = params.toString();
   window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
@@ -281,9 +289,11 @@ function LeadDetail({
 }
 
 export function LeadsView(props: LeadsViewProps) {
-  const { companyName, generatedAtIso, currency, rows, fieldLabels, initialFilters, initialLang, initialTheme } = props;
+  const { companyName, generatedAtIso, currency, rows, period, periodStartIso, fieldLabels, initialFilters, initialLang, initialTheme } =
+    props;
   const prefs = usePrefs(initialLang, initialTheme);
   const { t, locale } = prefs;
+  const periodSwitch = usePeriodSwitch(period, DEFAULT_TAB_PERIOD);
 
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [query, setQuery] = useState("");
@@ -409,7 +419,19 @@ export function LeadsView(props: LeadsViewProps) {
     <div className="w-full min-h-screen flex flex-col" style={{ background: "var(--page-plane)" }}>
       <AppHeader companyName={companyName} title={t.leadsTitle} subtitle={t.leadsSubtitle} generatedAtIso={generatedAtIso} prefs={prefs} />
 
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-6 flex-1">
+      <main
+        className="max-w-6xl mx-auto w-full px-4 sm:px-10 py-8 flex flex-col gap-6 flex-1 transition-opacity"
+        style={{ opacity: periodSwitch.pending ? 0.55 : 1, cursor: periodSwitch.pending ? "progress" : undefined }}
+        aria-busy={periodSwitch.pending}
+      >
+        <PeriodBar
+          periods={TAB_PERIODS}
+          selected={periodSwitch.shown}
+          onChange={periodSwitch.change}
+          periodStartIso={periodStartIso}
+          t={t}
+          locale={locale}
+        />
         <section
           className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
           style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)", boxShadow: "var(--card-shadow)" }}
