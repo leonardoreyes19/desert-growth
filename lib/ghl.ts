@@ -23,7 +23,10 @@ async function ghlGet<T>(path: string, params: Record<string, string | number>):
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, String(value));
   }
-  const res = await fetch(url, { headers: headers(), cache: "no-store" });
+  // The AbortSignal opts out of Next's per-render fetch memoization: the messages
+  // export pages with a cursor id that stays the same between pages (GHL advances
+  // it server-side), so memoized identical URLs would replay one page forever.
+  const res = await fetch(url, { headers: headers(), cache: "no-store", signal: new AbortController().signal });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`GHL API error ${res.status} on ${path}: ${body.slice(0, 500)}`);
@@ -170,17 +173,19 @@ const MESSAGE_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Facebook", "Insta
 async function fetchAllMessages(locationId: string): Promise<GhlMessage[]> {
   const perChannel = await Promise.all(
     MESSAGE_CHANNELS.map(async (channel) => {
-      const all: GhlMessage[] = [];
+      const byId = new Map<string, GhlMessage>();
       let cursor: string | null = null;
       for (let page = 0; page < 50; page++) {
         const params: Record<string, string | number> = { locationId, channel, limit: 100 };
         if (cursor) params.cursor = cursor;
         const data = await ghlGet<MessagesExportResponse>("/conversations/messages/export", params);
-        all.push(...data.messages);
+        const before = byId.size;
+        for (const m of data.messages) byId.set(m.id, m);
         cursor = data.nextCursor;
-        if (!cursor) break;
+        // Stop if the cursor is exhausted or a page brought nothing new.
+        if (!cursor || byId.size === before) break;
       }
-      return all;
+      return [...byId.values()];
     })
   );
   return perChannel.flat();

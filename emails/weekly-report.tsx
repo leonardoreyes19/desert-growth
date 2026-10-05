@@ -145,9 +145,9 @@ export default function WeeklyReport({
                   </tr>
                   <tr>
                     <StatCell
-                      label="Tiempo a primer contacto"
+                      label="Tiempo típico para contestar"
                       value={formatMinutes(responseTime.medianMinutes)}
-                      sublabel="mediana"
+                      sublabel="la mitad de los leads recibió respuesta en menos"
                     />
                     <StatCell
                       label="Leads estancados"
@@ -197,8 +197,9 @@ export default function WeeklyReport({
 
             <Hr style={{ borderColor: BORDER, borderTop: "1px solid", margin: "24px 0 12px" }} />
             <Text style={{ fontSize: 11, color: MUTED, margin: 0, lineHeight: "16px" }}>
-              &ldquo;Tiempo a primer contacto&rdquo; mide el tiempo entre la creación del lead y el primer
-              hilo de conversación registrado en el CRM. Reporte generado automáticamente desde GoHighLevel.
+              &ldquo;Tiempo típico para contestar&rdquo; es la mediana del tiempo entre que llega un lead y el primer
+              mensaje que una persona le manda desde el CRM o el WhatsApp conectado (sin contar mensajes automáticos).
+              Reporte generado automáticamente desde GoHighLevel.
             </Text>
           </Container>
         </Body>
