@@ -50,6 +50,8 @@ export type LeadRow = {
   value: number;
   daysInStage: number | null;
   daysSinceCreated: number;
+  /** When the deal was won or lost (its last stage or status change, whichever is later); null while open. */
+  closedAt: string | null;
   useCase: string[];
   batteryQty: number | null;
   batteryQtyRaw: string | null;
@@ -213,6 +215,7 @@ export function buildLeadRows(input: {
       value: o?.monetaryValue ?? 0,
       daysInStage: o?.lastStageChangeAt ? Math.max(0, (now - new Date(o.lastStageChangeAt).getTime()) / DAY_MS) : null,
       daysSinceCreated: Math.max(0, (now - created) / DAY_MS),
+      closedAt: o ? closedAtOf(o, stage?.name ?? null) : null,
       useCase: useCaseRaw == null ? [] : Array.isArray(useCaseRaw) ? useCaseRaw : [useCaseRaw],
       batteryQty: parseBatteryQty(qtyRaw),
       batteryQtyRaw: qtyRaw,
@@ -228,6 +231,13 @@ export function buildLeadRows(input: {
       ghlUrl: `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${c.id}`,
     };
   });
+}
+
+function closedAtOf(o: GhlOpportunity, stageName: string | null): string | null {
+  const bucket = bucketForStage(stageName, o.status);
+  if (bucket !== "won" && bucket !== "lost" && bucket !== "disqualified") return null;
+  const t = Math.max(new Date(o.lastStageChangeAt).getTime() || 0, new Date(o.lastStatusChangeAt).getTime() || 0);
+  return t > 0 ? new Date(t).toISOString() : null;
 }
 
 function firstAttribution(o: GhlOpportunity) {

@@ -79,14 +79,15 @@ export function cohortBetween(rows: LeadRow[], start: number, end: number, windo
 
 const isQuoted = (r: LeadRow) => QUOTED_BUCKETS.includes(r.bucket) || (r.bucket === "lost" && r.value > 0);
 
-function lineFinance(rows: LeadRow[], spend: number): LineFinance {
+/** `won` defaults to the won leads among `rows`; for a period it's the deals closed in that period. */
+function lineFinance(rows: LeadRow[], spend: number, won = rows.filter((r) => r.bucket === "won")): LineFinance {
   const paid = rows.filter((r) => r.campaignId);
   const quotes = rows.filter(isQuoted);
-  const won = rows.filter((r) => r.bucket === "won");
   const wonValue = won.reduce((s, r) => s + r.value, 0);
   const openQuoted = rows.filter((r) => r.bucket === "quoted" || r.bucket === "negotiation");
   const openQuotedValue = openQuoted.reduce((s, r) => s + r.value, 0);
   const closed = rows.filter((r) => r.bucket === "won" || r.bucket === "lost" || r.bucket === "disqualified").length;
+  const cohortWon = rows.filter((r) => r.bucket === "won").length;
   return {
     spend,
     leads: rows.length,
@@ -104,7 +105,7 @@ function lineFinance(rows: LeadRow[], spend: number): LineFinance {
       ? quotes.reduce((s, r) => s + r.value, 0) / quotes.filter((r) => r.value > 0).length
       : null,
     quoteRate: rows.length > 0 ? quotes.length / rows.length : null,
-    closeRate: closed > 0 ? won.length / closed : null,
+    closeRate: closed > 0 ? cohortWon / closed : null,
     wastedSpend: rows.filter((r) => DEAD_BUCKETS.includes(r.bucket)).reduce((s, r) => s + r.estCost, 0),
     lostValue: rows.filter((r) => r.bucket === "lost" || r.bucket === "disqualified").reduce((s, r) => s + r.value, 0),
   };
@@ -112,13 +113,29 @@ function lineFinance(rows: LeadRow[], spend: number): LineFinance {
 
 /**
  * `rows` are the leads being analysed (all of them, or one period's cohort) and
- * `adSpend` the Meta spend for the same window. `allRows` is only used to know
- * which campaigns belong to which product line, so a campaign that spent money
- * in the window still counts even if none of its leads arrived in it.
+ * `adSpend` the Meta spend for the same window. `allRows` is used to know which
+ * campaigns belong to which product line (so a campaign that spent money in the
+ * window counts even if none of its leads arrived in it) and, with
+ * `salesWindow`, to count the deals won in that window whenever their lead
+ * arrived — so sales, ROAS and cost per sale are "closed this period vs. spent
+ * this period", not only sales from the period's own leads.
  */
-export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], allRows: LeadRow[] = rows, atRiskDays = 14): FinanceSummary {
+export function financeSummary(
+  rows: LeadRow[],
+  adSpend: MetaAdSpend[],
+  allRows: LeadRow[] = rows,
+  salesWindow: { start: number; end: number } | null = null,
+  atRiskDays = 14
+): FinanceSummary {
   // Only CRM opportunities count as leads here (a handful of contacts have none).
   const leads = rows.filter((r) => r.stage !== null);
+  const wonInWindow = (r: LeadRow) => {
+    if (r.bucket !== "won") return false;
+    if (!salesWindow) return true;
+    const t = r.closedAt ? new Date(r.closedAt).getTime() : NaN;
+    return t >= salesWindow.start && t < salesWindow.end;
+  };
+  const sales = (salesWindow ? allRows : leads).filter((r) => r.stage !== null && wonInWindow(r));
 
   const spendByCampaign = new Map<string, number>();
   for (const a of adSpend) spendByCampaign.set(a.campaignId, (spendByCampaign.get(a.campaignId) ?? 0) + a.spend);
@@ -130,9 +147,9 @@ export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], allRows:
     const campaigns = new Set(
       allRows.filter((r) => r.stage !== null && r.line === line).map((r) => r.campaignId).filter((id): id is string => !!id)
     );
-    if (lineRows.length === 0 && campaigns.size === 0) continue;
+    if (lineRows.length === 0 && campaigns.size === 0 && !sales.some((r) => r.line === line)) continue;
     const spend = [...campaigns].reduce((s, id) => s + (spendByCampaign.get(id) ?? 0), 0);
-    byLine[line] = lineFinance(lineRows, spend);
+    byLine[line] = lineFinance(lineRows, spend, sales.filter((r) => r.line === line));
   }
   const totalSpend = Object.values(byLine).reduce((s, l) => s + (l?.spend ?? 0), 0);
 
@@ -223,7 +240,7 @@ export function financeSummary(rows: LeadRow[], adSpend: MetaAdSpend[], allRows:
   const paidDates = leads.filter((r) => r.campaignId).map((r) => r.dateAdded).sort();
 
   return {
-    totals: lineFinance(leads, totalSpend),
+    totals: lineFinance(leads, totalSpend, sales),
     byLine,
     funnel: [
       { key: "leads", count: leads.length, value: 0 },

@@ -22,7 +22,12 @@ export default async function MoneyPage({ searchParams }: PageProps) {
       generatedAtIso={new Date().toISOString()}
       currency={data.currency}
       periodInfo={periodInfo(range)}
-      finance={financeSummary(data.rows, data.adSpend, data.allRows)}
+      finance={financeSummary(
+        data.rows,
+        data.adSpend,
+        data.allRows,
+        range.key === "todo" ? null : { start: range.start, end: range.end }
+      )}
       metaConfigured={data.metaConfigured}
       metaError={data.metaError}
       initialLang={prefs.lang}
