@@ -17,7 +17,8 @@ function isAuthorized(req: NextRequest): boolean {
 /**
  * Daily email with the month to date as of yesterday (the closed month on the
  * 1st). Vercel Cron calls it every morning; `?dry=1` returns the HTML instead
- * of sending, for previewing.
+ * of sending, and `?test=1` sends a "[Prueba]" copy that doesn't count as the
+ * day's email.
  */
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,15 +48,16 @@ export async function GET(req: NextRequest) {
     month: "long",
     timeZone: "America/Hermosillo",
   });
-  const subject = report.monthClosed
+  const test = req.nextUrl.searchParams.get("test") === "1";
+  const subject = (test ? "[Prueba] " : "") + (report.monthClosed
     ? `${companyName} — Cierre del mes (al ${cutDay})`
-    : `${companyName} — Reporte diario al ${cutDay}`;
+    : `${companyName} — Reporte diario al ${cutDay}`);
 
   const resend = new Resend(resendApiKey);
   const { data, error } = await resend.emails.send(
     { from, to: recipients, subject, html },
-    // One email per cut date, even if the cron retries.
-    { idempotencyKey: `daily-report/${report.cutDate}` }
+    // One email per cut date, even if the cron retries; test sends never collide with it.
+    { idempotencyKey: test ? `daily-report-test/${report.cutDate}/${crypto.randomUUID()}` : `daily-report/${report.cutDate}` }
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, id: data?.id, cutDate: report.cutDate, recipients: recipients.length });
