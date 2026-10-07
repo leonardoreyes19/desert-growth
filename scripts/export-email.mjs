@@ -1,9 +1,9 @@
 import { render } from "react-email";
 import React from "react";
-import { WeeklyReport } from "../emails/weekly-report.tsx";
+import DailyReport from "../emails/daily-report.tsx";
 import fs from "fs";
 
-const html = await render(React.createElement(WeeklyReport, WeeklyReport.PreviewProps));
+const html = await render(React.createElement(DailyReport, DailyReport.PreviewProps));
 fs.mkdirSync("exports/emails", { recursive: true });
-fs.writeFileSync("exports/emails/weekly-report.html", html);
-console.log("wrote exports/emails/weekly-report.html", html.length, "bytes");
+fs.writeFileSync("exports/emails/daily-report.html", html);
+console.log("wrote exports/emails/daily-report.html", html.length, "bytes");

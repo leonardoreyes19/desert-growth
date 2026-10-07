@@ -359,14 +359,15 @@ function countWeekOverWeek(
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Rolling last 7 days vs. the 7 before — used by the Monday email, which reports the week that just ended. */
-export function leadsWeekOverWeek(contacts: GhlContact[]): WeekOverWeek {
-  const now = Date.now();
-  return countWeekOverWeek(contacts, now - 7 * ONE_DAY_MS, Infinity, now - 14 * ONE_DAY_MS, now - 7 * ONE_DAY_MS);
-}
 
 // America/Hermosillo is UTC-7 year-round (no DST).
 const HERMOSILLO_OFFSET_MS = -7 * 60 * 60 * 1000;
+
+/** 00:00 (Hermosillo time) of the day containing `t`, as a UTC timestamp. */
+export function startOfDay(t: number): number {
+  const local = new Date(t + HERMOSILLO_OFFSET_MS);
+  return Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - HERMOSILLO_OFFSET_MS;
+}
 
 /** Monday 00:00 (Hermosillo time) of the week containing `now`, as a UTC timestamp. */
 export function startOfWeek(now: number): number {
