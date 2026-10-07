@@ -18,7 +18,7 @@ function isAuthorized(req: NextRequest): boolean {
  * Daily email with the month to date as of yesterday (the closed month on the
  * 1st). Vercel Cron calls it every morning; `?dry=1` returns the HTML instead
  * of sending, and `?test=1` sends a "[Prueba]" copy that doesn't count as the
- * day's email.
+ * day's email. REPORT_RECIPIENTS is a comma-separated list.
  */
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
     .filter(Boolean);
   if (!resendApiKey) return NextResponse.json({ error: "Missing RESEND_API_KEY" }, { status: 500 });
   if (recipients.length === 0) return NextResponse.json({ error: "Missing REPORT_RECIPIENTS" }, { status: 500 });
-  // Without a verified domain Resend only delivers from its sandbox address, to the account owner.
-  const from = process.env.REPORT_FROM_EMAIL || `${companyName} <onboarding@resend.dev>`;
+  const resend = new Resend(resendApiKey);
+  const from = await senderAddress(resend, companyName);
 
   const cutDay = new Date(`${report.cutDate}T12:00:00-07:00`).toLocaleDateString("es-MX", {
     day: "numeric",
@@ -53,12 +53,40 @@ export async function GET(req: NextRequest) {
     ? `${companyName} — Cierre del mes (al ${cutDay})`
     : `${companyName} — Reporte diario al ${cutDay}`);
 
-  const resend = new Resend(resendApiKey);
-  const { data, error } = await resend.emails.send(
-    { from, to: recipients, subject, html },
-    // One email per cut date, even if the cron retries; test sends never collide with it.
-    { idempotencyKey: test ? `daily-report-test/${report.cutDate}/${crypto.randomUUID()}` : `daily-report/${report.cutDate}` }
+  // One email per recipient, so one bad address (or one the sandbox sender can't reach) doesn't block the rest.
+  const runId = test ? crypto.randomUUID() : null;
+  const results = await Promise.all(
+    recipients.map(async (to) => {
+      const { data, error } = await resend.emails.send(
+        { from, to: [to], subject, html },
+        // One email per recipient and cut date, even if the cron retries; test sends never collide with it.
+        { idempotencyKey: runId ? `daily-report-test/${report.cutDate}/${runId}/${to}` : `daily-report/${report.cutDate}/${to}` }
+      );
+      return error ? { to, error: error.message } : { to, id: data?.id };
+    })
   );
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, id: data?.id, cutDate: report.cutDate, recipients: recipients.length });
+  const failed = results.filter((r) => "error" in r);
+  return NextResponse.json(
+    { ok: failed.length === 0, from, cutDate: report.cutDate, results },
+    { status: failed.length === results.length ? 500 : 200 }
+  );
+}
+
+/**
+ * reportes@<domain> once the domain connected to Resend (RESEND_EMAIL_DOMAIN)
+ * is verified; until then Resend's sandbox address, which only delivers to the
+ * Resend account owner. While unverified it asks Resend to re-check the DNS,
+ * so the switch happens on its own once the records are in place.
+ */
+async function senderAddress(resend: Resend, companyName: string): Promise<string> {
+  if (process.env.REPORT_FROM_EMAIL) return process.env.REPORT_FROM_EMAIL;
+  const sandbox = `${companyName} <onboarding@resend.dev>`;
+  const domainName = process.env.RESEND_EMAIL_DOMAIN;
+  if (!domainName) return sandbox;
+  const { data } = await resend.domains.list();
+  const domain = data?.data.find((d) => d.name === domainName);
+  if (!domain) return sandbox;
+  if (domain.status === "verified") return `${companyName} <reportes@${domainName}>`;
+  await resend.domains.verify(domain.id);
+  return sandbox;
 }
