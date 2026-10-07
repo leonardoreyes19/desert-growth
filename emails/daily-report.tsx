@@ -1,6 +1,6 @@
 import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Tailwind, Text, pixelBasedPreset } from "react-email";
 import type { ReactNode } from "react";
-import type { Compared, DailyReportData } from "../lib/daily-report";
+import type { Compared, DailyReportData, LeadLine, Move } from "../lib/daily-report";
 import { formatMinutes } from "../lib/metrics";
 
 const BRAND = "#2a78d6";
@@ -67,6 +67,52 @@ function Title({ children }: { children: ReactNode }) {
   return <Heading as="h2" style={{ fontSize: 14, color: INK, margin: "20px 0 4px" }}>{children}</Heading>;
 }
 
+const shortDate = (iso: string) => dayLabel(iso, { day: "numeric", month: "short" });
+const TH = { fontSize: 11, color: MUTED, fontWeight: 500, padding: "6px 4px", borderBottom: `1px solid ${BORDER}` } as const;
+const TD = { fontSize: 12, color: INK, padding: "5px 4px", borderBottom: `1px solid ${BORDER}` } as const;
+
+function Note({ children }: { children: ReactNode }) {
+  return <Text style={{ fontSize: 12, color: MUTED, margin: "4px 0 0" }}>{children}</Text>;
+}
+
+function LeadList({ leads, detail }: { leads: LeadLine[]; detail: (l: LeadLine) => string }) {
+  return (
+    <table role="presentation" width="100%" cellPadding={0} cellSpacing={0}>
+      <tbody>
+        {leads.map((l, i) => (
+          <tr key={i}>
+            <td style={{ ...TD, fontWeight: 600, width: "38%" }}>
+              {l.name}
+              {l.phone && <span style={{ display: "block", fontWeight: 400, color: MUTED, fontSize: 11 }}>{l.phone}</span>}
+            </td>
+            <td style={{ ...TD, color: MUTED }}>{detail(l)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function MoveList({ moves }: { moves: Move[] }) {
+  return (
+    <table role="presentation" width="100%" cellPadding={0} cellSpacing={0}>
+      <tbody>
+        {moves.map((m, i) => (
+          <tr key={i}>
+            <td style={{ ...TD, fontWeight: 600, width: "38%" }}>{m.name}</td>
+            <td style={{ ...TD, color: m.outcome === "won" ? GOOD : m.outcome === "lost" ? BAD : MUTED }}>
+              {m.from} → <strong>{m.to}</strong>
+              {m.value > 0 ? ` · ${money(m.value)}` : ""}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+const replyText = (l: LeadLine) => (l.replyMinutes === null ? "sin respuesta" : `contestado en ${formatMinutes(l.replyMinutes)}`);
+
 export interface DailyReportProps {
   companyName: string;
   dashboardUrl: string;
@@ -108,6 +154,93 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
                 </Cell>,
               ]}
             />
+
+            <Title>Qué se movió ayer</Title>
+            {r.movesYesterday.length > 0 ? <MoveList moves={r.movesYesterday} /> : <Note>Ningún lead cambió de etapa.</Note>}
+
+            <Title>Leads que llegaron ayer ({num(r.arrivedYesterday.length)})</Title>
+            {r.arrivedYesterday.length > 0 ? (
+              <LeadList
+                leads={r.arrivedYesterday}
+                detail={(l) =>
+                  [l.stage ? `${l.line} · ${l.stage}` : "sin oportunidad en el pipeline", l.customerType, l.ad, replyText(l)]
+                    .filter(Boolean)
+                    .join(" · ")
+                }
+              />
+            ) : (
+              <Note>No llegó ningún lead.</Note>
+            )}
+
+            <Title>Pendientes para hoy</Title>
+            <Text style={{ fontSize: 12, color: INK, fontWeight: 600, margin: "8px 0 2px" }}>
+              Sin respuesta después de 24 h ({num(r.todo.noReply.length)})
+            </Text>
+            {r.todo.noReply.length > 0 ? (
+              <LeadList
+                leads={r.todo.noReply}
+                detail={(l) =>
+                  [`llegó ${shortDate(l.arrived)}`, l.stage ? `${l.line} · ${l.stage}` : "tampoco está en el pipeline: crear oportunidad en GHL"].join(" · ")
+                }
+              />
+            ) : (
+              <Note>Todos los leads recientes tienen respuesta.</Note>
+            )}
+            {r.todo.noOpportunity.length > 0 && (
+              <>
+                <Text style={{ fontSize: 12, color: INK, fontWeight: 600, margin: "12px 0 2px" }}>
+                  Contestados pero sin oportunidad en el pipeline ({num(r.todo.noOpportunity.length)})
+                </Text>
+                <LeadList leads={r.todo.noOpportunity} detail={(l) => `llegó ${shortDate(l.arrived)} · crear oportunidad en GHL`} />
+              </>
+            )}
+            <Text style={{ fontSize: 12, color: INK, fontWeight: 600, margin: "12px 0 2px" }}>Cotizaciones estancadas de mayor monto</Text>
+            {r.todo.staleQuotes.length > 0 ? (
+              <LeadList
+                leads={r.todo.staleQuotes}
+                detail={(l) => `${money(l.value)} · ${l.stage} hace ${Math.floor(l.daysInStage ?? 0)} días · ${l.line}`}
+              />
+            ) : (
+              <Note>Ninguna cotización lleva 14+ días sin moverse.</Note>
+            )}
+
+            <Title>El mes día por día</Title>
+            <table role="presentation" width="100%" cellPadding={0} cellSpacing={0} style={{ marginTop: 4 }}>
+              <thead>
+                <tr>
+                  <th align="left" style={TH}>Día</th>
+                  <th align="right" style={TH}>Leads</th>
+                  <th align="right" style={TH}>Cotizaciones</th>
+                  <th align="right" style={TH}>Ventas</th>
+                  <th align="right" style={TH}>Inversión Meta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.days.map((d) => (
+                  <tr key={d.date}>
+                    <td style={TD}>{dayLabel(`${d.date}T12:00:00-07:00`, { weekday: "short", day: "numeric" })}</td>
+                    <td align="right" style={TD}>{d.leads || "·"}</td>
+                    <td align="right" style={TD}>{d.quotes ? `${d.quotes} · ${money(d.quotedValue)}` : "·"}</td>
+                    <td align="right" style={TD}>{d.sales ? `${d.sales} · ${money(d.salesValue)}` : "·"}</td>
+                    <td align="right" style={TD}>{d.spend === null ? "—" : d.spend ? money(d.spend) : "·"}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={{ ...TD, fontWeight: 700 }}>Total</td>
+                  <td align="right" style={{ ...TD, fontWeight: 700 }}>{num(r.days.reduce((s, d) => s + d.leads, 0))}</td>
+                  <td align="right" style={{ ...TD, fontWeight: 700 }}>{num(r.days.reduce((s, d) => s + d.quotes, 0))}</td>
+                  <td align="right" style={{ ...TD, fontWeight: 700 }}>{money(r.days.reduce((s, d) => s + d.salesValue, 0))}</td>
+                  <td align="right" style={{ ...TD, fontWeight: 700 }}>{money(r.days.reduce((s, d) => s + (d.spend ?? 0), 0))}</td>
+                </tr>
+                <tr>
+                  <td style={{ ...TD, color: MUTED }}>{r.monthClosed ? `${prevMonth} completo` : `${prevMonth} al día ${dayOfMonth}`}</td>
+                  <td align="right" style={{ ...TD, color: MUTED }}>{num(r.prevTotals.leads)}</td>
+                  <td align="right" style={{ ...TD, color: MUTED }}>{num(r.prevTotals.quotes)}</td>
+                  <td align="right" style={{ ...TD, color: MUTED }}>{money(r.prevTotals.salesValue)}</td>
+                  <td align="right" style={{ ...TD, color: MUTED }}>{money(r.prevTotals.spend)}</td>
+                </tr>
+              </tbody>
+            </table>
 
             <Title>El mes al corte</Title>
             <Grid
@@ -229,6 +362,16 @@ DailyReport.PreviewProps = {
     },
     pipeline: { now: { inConversation: 121, open: 181, noResponse: 57 }, prevMonthClose: { inConversation: 122, open: 180, noResponse: 58 }, stalled: 30 },
     response: { avgMinutes: 95, repliedCount: 3, settledCount: 5, noReplyIn24h: 2 },
+    days: [
+      { date: "2026-10-01", leads: 1, quotes: 0, quotedValue: 0, sales: 0, salesValue: 0, spend: 0 },
+      { date: "2026-10-02", leads: 2, quotes: 1, quotedValue: 6981, sales: 1, salesValue: 16791, spend: 1200 },
+    ],
+    prevTotals: { leads: 4, quotes: 1, sales: 0, salesValue: 0, spend: 2534 },
+    arrivedYesterday: [
+      { name: "José S.", phone: "+52 662 000 0000", line: "Marinas", customerType: "Pesca deportiva / charter", ad: "Ad 4 - Video", stage: "Lead nuevo", value: 0, replyMinutes: 12, daysInStage: 0, arrived: "2026-10-06T19:30:00.000Z" },
+    ],
+    movesYesterday: [{ name: "Mario P.", from: "Cotización enviada", to: "Ganado", value: 16791, outcome: "won" }],
+    todo: { noReply: [], noOpportunity: [], staleQuotes: [] },
     metaError: null,
   },
 } satisfies DailyReportProps;

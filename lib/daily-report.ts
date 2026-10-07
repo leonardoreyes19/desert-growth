@@ -9,6 +9,7 @@ import {
   firstTouchResponseTime,
   hermosilloDate,
   leadsInPeriod,
+  RESPONSE_TRACKING_SINCE,
   snapshotFromStages,
   startOfDay,
   startOfMonth,
@@ -19,6 +20,7 @@ import { refreshOpportunityEvents } from "./opportunity-history";
 import { stateAt } from "./opportunity-state";
 import { periodDates, type PeriodRange } from "./periods";
 import { pipelineHistoryFor } from "./snapshots";
+import type { LeadRow } from "./leads";
 
 /**
  * The daily email (like Zoho's daily report): the month to date as of the end
@@ -32,6 +34,24 @@ const STALLED_DAYS = 14;
 const NOT_STALLABLE_RE = /cotizaci/i;
 
 export type Compared = { value: number; previous: number | null };
+
+export type DayRow = { date: string; leads: number; quotes: number; quotedValue: number; sales: number; salesValue: number; spend: number | null };
+
+export type LeadLine = {
+  name: string;
+  phone: string | null;
+  line: string;
+  customerType: string | null;
+  ad: string | null;
+  stage: string | null;
+  value: number;
+  /** Minutes to the first human reply; null if none yet. */
+  replyMinutes: number | null;
+  daysInStage: number | null;
+  arrived: string;
+};
+
+export type Move = { name: string; from: string; to: string; value: number; outcome: "won" | "lost" | "open" };
 
 export type DailyReportData = {
   /** First instant after the cut (today 00:00 Hermosillo). */
@@ -57,8 +77,37 @@ export type DailyReportData = {
   };
   pipeline: { now: PipelineSnapshot; prevMonthClose: PipelineSnapshot | null; stalled: number };
   response: { avgMinutes: number | null; repliedCount: number; settledCount: number; noReplyIn24h: number };
+  /** One row per day of the month so far, plus the same totals for the comparison window. */
+  days: DayRow[];
+  prevTotals: { leads: number; quotes: number; sales: number; salesValue: number; spend: number };
+  /** Leads that arrived yesterday. */
+  arrivedYesterday: LeadLine[];
+  /** Deals that changed stage yesterday. */
+  movesYesterday: Move[];
+  /** What to act on today. */
+  todo: { noReply: LeadLine[]; noOpportunity: LeadLine[]; staleQuotes: LeadLine[] };
   metaError: string | null;
 };
+
+const LINE_LABEL: Record<string, string> = { golf: "Golf", marine: "Marinas", other: "Otra" };
+const TRACKING_SINCE = Date.parse(RESPONSE_TRACKING_SINCE);
+const RECENT_MS = 30 * DAY_MS;
+const isTestContact = (r: LeadRow) => /prueba|test/i.test(r.name) || /@malpa\.com\.mx$/i.test(r.email ?? "");
+
+function leadLine(r: LeadRow): LeadLine {
+  return {
+    name: r.name,
+    phone: r.phone,
+    line: r.stage === null ? "" : (LINE_LABEL[r.line] ?? r.line),
+    customerType: r.useCase[0] ?? null,
+    ad: r.adName,
+    stage: r.stage,
+    value: r.value,
+    replyMinutes: r.firstResponseMinutes,
+    daysInStage: r.daysInStage,
+    arrived: r.dateAdded,
+  };
+}
 
 export async function buildDailyReport(now = Date.now()): Promise<DailyReportData> {
   const locationId = requireLocationId();
@@ -116,6 +165,59 @@ export async function buildDailyReport(now = Date.now()): Promise<DailyReportDat
   const response = firstTouchResponseTime(contacts, messages, monthStart, end);
   const metaOk = meta.configured && meta.error === undefined ? meta : null;
 
+  // Day by day: what happened on each day of the month so far.
+  const inRange = (iso: string | null, from: number, to: number) => iso !== null && Date.parse(iso) >= from && Date.parse(iso) < to;
+  const leadsWithOpp = data.allRows.filter((r) => r.stage !== null);
+  const days: DayRow[] = [];
+  for (let t = monthStart; t < end; t += DAY_MS) {
+    const date = hermosilloDate(t);
+    const quoted = leadsWithOpp.filter((r) => inRange(r.quotedAt, t, t + DAY_MS));
+    const sold = leadsWithOpp.filter((r) => r.bucket === "won" && inRange(r.closedAt, t, t + DAY_MS));
+    days.push({
+      date,
+      leads: contactsBetween(contacts, t, t + DAY_MS).length,
+      quotes: quoted.length,
+      quotedValue: quoted.reduce((s, r) => s + r.value, 0),
+      sales: sold.length,
+      salesValue: sold.reduce((s, r) => s + r.value, 0),
+      spend: metaOk ? (metaOk.byDay.find((d) => d.date === date)?.spend ?? 0) : null,
+    });
+  }
+
+  // Yesterday: who arrived and what moved in the pipeline.
+  const arrivedYesterday = data.allRows
+    .filter((r) => inRange(r.dateAdded, yesterdayStart, end))
+    .sort((a, b) => a.dateAdded.localeCompare(b.dateAdded))
+    .map(leadLine);
+  const movesYesterday: Move[] = [];
+  for (const r of leadsWithOpp) {
+    const before = stateAt(r.events, yesterdayStart);
+    const after = stateAt(r.events, end);
+    if (!after) continue;
+    const isNew = !before && /lead nuevo/i.test(after.stage);
+    if (isNew || (before && before.stage === after.stage && before.outcome === after.outcome)) continue;
+    movesYesterday.push({ name: r.name, from: before?.stage ?? "Nuevo", to: after.stage, value: r.value, outcome: after.outcome });
+  }
+  movesYesterday.sort((a, b) => (a.outcome === b.outcome ? b.value - a.value : a.outcome === "won" ? -1 : b.outcome === "won" ? 1 : 0));
+
+  // To do today.
+  const recent = (r: LeadRow) => Date.parse(r.dateAdded) >= Math.max(end - RECENT_MS, TRACKING_SINCE) && !isTestContact(r);
+  const closed = (r: LeadRow) => r.bucket === "won" || r.bucket === "lost" || r.bucket === "disqualified";
+  const noReply = data.allRows
+    .filter((r) => recent(r) && Date.parse(r.dateAdded) < end - DAY_MS && r.firstResponseMinutes === null && !closed(r))
+    .sort((a, b) => b.dateAdded.localeCompare(a.dateAdded))
+    .map(leadLine);
+  // Unanswered ones already appear above (flagged as missing from the pipeline), so list only the rest.
+  const noOpportunity = data.allRows
+    .filter((r) => recent(r) && r.stage === null && r.firstResponseMinutes !== null)
+    .sort((a, b) => b.dateAdded.localeCompare(a.dateAdded))
+    .map(leadLine);
+  const staleQuotes = leadsWithOpp
+    .filter((r) => (r.bucket === "quoted" || r.bucket === "negotiation") && (r.daysInStage ?? 0) >= STALLED_DAYS)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+    .map(leadLine);
+
   return {
     cutIso: new Date(end).toISOString(),
     cutDate: hermosilloDate(yesterdayStart),
@@ -152,6 +254,17 @@ export async function buildDailyReport(now = Date.now()): Promise<DailyReportDat
       settledCount: response.settledCount,
       noReplyIn24h: response.noReplyIn24h,
     },
+    days,
+    prevTotals: {
+      leads: leadsInPeriod(contacts, range).lastWeek,
+      quotes: prevFinance.quotes,
+      sales: prevFinance.won,
+      salesValue: prevFinance.wonValue,
+      spend: prevFinance.spend,
+    },
+    arrivedYesterday,
+    movesYesterday,
+    todo: { noReply, noOpportunity, staleQuotes },
     metaError: data.metaError ?? (meta.configured && meta.error !== undefined ? meta.error : null),
   };
 }
