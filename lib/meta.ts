@@ -15,8 +15,8 @@ import { cached } from "./server-cache";
  *   META_API_VERSION       Graph API version (default v21.0).
  *   META_LEAD_ACTION_TYPE  Optional exact action_type to count as "lead"
  *                          (e.g. offsite_conversion.custom.<id> for the
- *                          "Marina – Lead" custom conversion). If unset, any
- *                          action_type containing "lead" is summed.
+ *                          "Marina – Lead" custom conversion). If unset,
+ *                          Meta's de-duplicated `lead` action is used.
  */
 
 const DEFAULT_VERSION = "v21.0";
@@ -97,13 +97,30 @@ const num = (v: string | undefined): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Meta reports the same lead under several action types at once (`lead`,
+ * `onsite_web_lead`, `offsite_conversion.fb_pixel_lead`, …), so they must not
+ * be summed: count one. Prefer META_LEAD_ACTION_TYPE, then Meta's own
+ * de-duplicated `lead` total, then the most specific fallbacks.
+ */
+const LEAD_ACTION_PRIORITY = [
+  "lead",
+  "onsite_conversion.lead_grouped",
+  "offsite_conversion.fb_pixel_lead",
+  "onsite_web_lead",
+  "leadgen_grouped",
+];
+
 function countLeads(actions: MetaAction[] | undefined): number {
   if (!actions) return 0;
+  const byType = new Map(actions.map((a) => [a.action_type, num(a.value)]));
   const exact = process.env.META_LEAD_ACTION_TYPE?.trim();
-  return actions.reduce((sum, a) => {
-    const match = exact ? a.action_type === exact : a.action_type.includes("lead");
-    return match ? sum + num(a.value) : sum;
-  }, 0);
+  if (exact) return byType.get(exact) ?? 0;
+  for (const type of LEAD_ACTION_PRIORITY) {
+    const value = byType.get(type);
+    if (value !== undefined) return value;
+  }
+  return 0;
 }
 
 async function graphGet(path: string, params: Record<string, string>): Promise<InsightRow[]> {
