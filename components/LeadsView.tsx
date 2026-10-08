@@ -434,6 +434,7 @@ export function LeadsView(props: LeadsViewProps) {
           info={info}
           t={t}
           locale={locale}
+          note={info.key === "todo" ? undefined : t.notes.leadsList}
         />
         <section
           className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4"
@@ -597,12 +598,14 @@ export function LeadsView(props: LeadsViewProps) {
           <StatTile
             icon="fileText"
             label={t.selQuoted}
+            note={info.key === "todo" ? undefined : t.notes.leadsQuoted}
             value={money(quoted.reduce((s, r) => s + r.value, 0))}
             sublabel={t.selQuotedCount(quoted.length)}
           />
           <StatTile
             icon="trophy"
             label={t.selWon}
+            note={info.key === "todo" ? undefined : t.notes.leadsSold}
             value={money(won.reduce((s, r) => s + r.value, 0))}
             sublabel={t.selWonCount(won.length)}
             accent="good"
@@ -610,6 +613,7 @@ export function LeadsView(props: LeadsViewProps) {
           <StatTile
             icon="wallet"
             label={t.selCost}
+            note={t.notes.leadsCost}
             value={money(cost)}
             sublabel={paidCount > 0 ? t.selCpl(money(cost / paidCount)) : undefined}
           />

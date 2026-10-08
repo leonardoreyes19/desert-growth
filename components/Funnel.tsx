@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoNote } from "@/components/InfoNote";
 
 export type FunnelDatum = { label: string; hint?: string; count: number; valueLabel?: string };
 
@@ -14,12 +15,14 @@ export function Funnel({
   steps,
   formatCount,
   ofPrevious,
+  note,
 }: {
   title: string;
   steps: FunnelDatum[];
   formatCount: (n: number) => string;
   /** Omit when the steps aren't the same leads narrowing down (e.g. a period's activity). */
   ofPrevious?: (pct: string) => string;
+  note?: string;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   // Scale to the largest step: in a period's activity a later step can outnumber the first.
@@ -30,9 +33,10 @@ export function Funnel({
       className="rounded-2xl p-5 sm:p-6"
       style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)", boxShadow: "var(--card-shadow)" }}
     >
-      <h3 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>
+      <h3 className={`text-sm font-medium ${note ? "mb-1" : "mb-4"}`} style={{ color: "var(--text-primary)" }}>
         {title}
       </h3>
+      {note && <InfoNote className="mb-4">{note}</InfoNote>}
       <ol className="flex flex-col gap-3">
         {steps.map((step, i) => {
           const prev = i > 0 ? steps[i - 1].count : null;

@@ -113,26 +113,27 @@ export function MoneyView(props: MoneyViewProps) {
         <section>
           <SectionLabel>{t.bigPicture}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile icon="megaphone" label={t.invested} value={money(tot.spend)} sublabel={t.investedSub(tot.paidLeads)} />
-            <StatTile icon="trophy" label={t.revenueWon} value={money(tot.wonValue)} sublabel={t.revenueWonSub(tot.won)} accent="good" />
+            <StatTile icon="megaphone" label={t.invested} value={money(tot.spend)} sublabel={t.investedSub(tot.paidLeads)} note={t.notes.invested} />
+            <StatTile icon="trophy" label={t.revenueWon} value={money(tot.wonValue)} sublabel={t.revenueWonSub(tot.won)} accent="good" note={t.notes.revenueWon} />
             <StatTile
               icon="trendUp"
               label={t.roas}
+              note={t.notes.roas}
               value={roasText(tot.roas)}
               sublabel={tot.roas != null ? t.roasSub(money2(tot.roas)) : undefined}
               accent={tot.roas == null ? "neutral" : tot.roas >= 1 ? "good" : "warning"}
             />
-            <StatTile icon="fileText" label={t.quotedOpen} value={money(tot.openQuotedValue)} sublabel={t.quotedOpenSub(tot.openQuotes)} />
+            <StatTile icon="fileText" label={t.quotedOpen} value={money(tot.openQuotedValue)} sublabel={t.quotedOpenSub(tot.openQuotes)} note={t.notes.quotedOpen} />
           </div>
         </section>
 
         <section>
           <SectionLabel>{t.unitCosts}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatTile icon="users" label={t.cplReal} value={moneyOrDash(tot.cpl)} sublabel={t.cplRealSub} />
-            <StatTile icon="receipt" label={t.costPerQuote} value={moneyOrDash(tot.costPerQuote)} sublabel={t.costPerQuoteSub(tot.quotes)} />
-            <StatTile icon="target" label={t.cac} value={moneyOrDash(tot.cac)} sublabel={t.cacSub(tot.won)} />
-            <StatTile icon="tag" label={t.avgQuote} value={moneyOrDash(tot.avgQuote)} sublabel={t.avgQuoteSub} />
+            <StatTile icon="users" label={t.cplReal} value={moneyOrDash(tot.cpl)} sublabel={t.cplRealSub} note={t.notes.cpl} />
+            <StatTile icon="receipt" label={t.costPerQuote} value={moneyOrDash(tot.costPerQuote)} sublabel={t.costPerQuoteSub(tot.quotes)} note={t.notes.costPerQuote} />
+            <StatTile icon="target" label={t.cac} value={moneyOrDash(tot.cac)} sublabel={t.cacSub(tot.won)} note={t.notes.cac} />
+            <StatTile icon="tag" label={t.avgQuote} value={moneyOrDash(tot.avgQuote)} sublabel={t.avgQuoteSub} note={t.notes.avgQuote} />
           </div>
         </section>
 
@@ -142,6 +143,7 @@ export function MoneyView(props: MoneyViewProps) {
             <StatTile
               icon="alert"
               label={t.wastedSpend}
+              note={t.notes.wasted}
               value={money(tot.wastedSpend)}
               sublabel={
                 info.key !== "todo" ? t.wastedSpendPeriodSub(tot.wastedLeads) : wastedShare != null ? t.wastedSpendSub(pct(wastedShare)) : undefined
@@ -151,14 +153,15 @@ export function MoneyView(props: MoneyViewProps) {
             <StatTile
               icon="hourglass"
               label={t.atRisk}
+              note={t.notes.atRisk}
               value={money(finance.atRisk.value)}
               sublabel={t.atRiskSub(finance.atRisk.count, finance.atRisk.thresholdDays)}
               accent={finance.atRisk.count > 0 ? "warning" : "good"}
             />
-            <StatTile icon="xCircle" label={t.lostValue} value={money(tot.lostValue)} sublabel={t.lostValueSub} />
+            <StatTile icon="xCircle" label={t.lostValue} value={money(tot.lostValue)} sublabel={t.lostValueSub} note={t.notes.lostValue} />
           </div>
           <div className="mt-4">
-            <Panel title={t.whereSpendGoes}>
+            <Panel title={t.whereSpendGoes} note={t.notes.whereSpendGoes}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ color: "var(--text-secondary)" }}>
@@ -199,6 +202,7 @@ export function MoneyView(props: MoneyViewProps) {
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
             <Funnel
               title={periodMode ? t.periodActivityTitle : t.funnelTitle}
+              note={periodMode ? t.notes.activity : t.notes.funnel}
               steps={finance.funnel.map((s) => ({
                 ...funnelLabels[s.key],
                 count: s.count,
@@ -209,6 +213,7 @@ export function MoneyView(props: MoneyViewProps) {
             />
             <BarChart
               title={t.valueByStage}
+              note={t.notes.valueByStage}
               data={finance.valueByStage.map((s) => ({ label: s.label, value: Math.round(s.value) }))}
               formatValue={money}
               labels={chartLabels}
@@ -219,7 +224,7 @@ export function MoneyView(props: MoneyViewProps) {
         {lines.length > 1 && (
           <section>
             <SectionLabel>{t.byLineTitle}</SectionLabel>
-            <Panel>
+            <Panel note={t.notes.lineTable}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ color: "var(--text-secondary)" }}>
@@ -249,7 +254,7 @@ export function MoneyView(props: MoneyViewProps) {
         {finance.byAd.length > 0 && (
           <section>
             <SectionLabel>{t.byAdTitle}</SectionLabel>
-            <Panel subtitle={t.byAdSubtitle}>
+            <Panel subtitle={t.byAdSubtitle} note={t.notes.byAd}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ color: "var(--text-secondary)" }}>
@@ -323,6 +328,7 @@ export function MoneyView(props: MoneyViewProps) {
             <StatTile
               icon="battery"
               label={t.batteries}
+              note={t.notes.batteries}
               value={count(finance.batteriesRequested)}
               sublabel={t.batteriesSub(count(finance.batteriesQuoted))}
             />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
+import { InfoNote } from "@/components/InfoNote";
 
 const ACCENT_COLOR = {
   neutral: "var(--series-1)",
@@ -30,6 +31,7 @@ export function StatTile({
   delta,
   comparisons = [],
   action,
+  note,
   accent = "neutral",
   icon,
 }: {
@@ -41,6 +43,8 @@ export function StatTile({
   comparisons?: Comparison[];
   /** Link shown at the bottom of the tile, e.g. to the list behind the number. */
   action?: { href: string; label: string };
+  /** What exactly the number counts and its exceptions. */
+  note?: string;
   accent?: "neutral" | "good" | "warning";
   icon?: IconName;
 }) {
@@ -113,6 +117,7 @@ export function StatTile({
           )}
         </div>
       )}
+      {note && <InfoNote className="pt-2 border-t border-dashed border-[var(--gridline)]">{note}</InfoNote>}
       {action && (
         <Link
           href={action.href}

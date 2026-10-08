@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ToggleGroup } from "radix-ui";
 import type { PeriodInfo, PeriodKey } from "@/lib/periods";
 import type { Dict } from "@/components/AppHeader";
+import { InfoNote } from "@/components/InfoNote";
 
 /** Semana / Mes (/ Todo) segmented control shared by Resumen, Dinero and Leads. */
 export function PeriodFilter<P extends PeriodKey>({
@@ -143,11 +144,7 @@ export function PeriodBar<P extends PeriodKey>({
           {caption}
         </span>
       </div>
-      {note && (
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          {note}
-        </p>
-      )}
+      {note && <InfoNote>{note}</InfoNote>}
     </div>
   );
 }

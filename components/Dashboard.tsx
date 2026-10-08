@@ -26,6 +26,7 @@ import { AppFooter } from "@/components/AppFooter";
 import { BarChart } from "@/components/BarChart";
 import { LineChart } from "@/components/LineChart";
 import { SectionLabel } from "@/components/SectionLabel";
+import { InfoNote } from "@/components/InfoNote";
 
 type MetaInsightsOk = Extract<MetaInsights, { byCampaign: unknown }>;
 
@@ -172,6 +173,7 @@ function MetaAdsPanel({ meta, vsPrev, t, locale }: { meta: MetaInsightsOk; vsPre
         />
         <StatTile
           icon="users" label={t.metaCpl}
+          note={t.notes.metaCpl}
           value={meta.cpl != null ? money2(meta.cpl) : "—"}
           sublabel={t.metaLeadsReported(meta.leads.toLocaleString(locale))}
           comparisons={
@@ -388,7 +390,10 @@ export function Dashboard(props: DashboardProps) {
 
         <SourceGroup title={t.crmGroupTitle} subtitle={t.crmGroupSubtitle} accent="var(--series-1)">
         {availableTags.length > 0 && (
-          <TagFilter tags={availableTags} selected={shown.tag} onChange={(tag) => navigate({ tag, choice: shown.choice })} label={t.tagFilterLabel} allLabel={t.allLeads} />
+          <div>
+            <TagFilter tags={availableTags} selected={shown.tag} onChange={(tag) => navigate({ tag, choice: shown.choice })} label={t.tagFilterLabel} allLabel={t.allLeads} />
+            <InfoNote className="mt-2">{t.notes.tags}</InfoNote>
+          </div>
         )}
         <section>
           <SectionLabel>{t.summary}</SectionLabel>
@@ -397,15 +402,18 @@ export function Dashboard(props: DashboardProps) {
               icon="users" label={pastMonth ? t.leadsAtMonthClose(pastMonth) : t.leadsInPeriod[period]}
               value={pipeline.inConversation.toLocaleString(locale)}
               sublabel={pipelineNote ?? t.inConversationSublabel}
+              note={t.notes.inConversation}
               comparisons={vsPeriodStart("inConversation")}
             />
             <StatTile
               icon="trendUp" label={pastMonth ? t.newLeadsInMonth(pastMonth) : t.newLeadsInPeriod[period]}
+              note={t.notes.newLeads}
               value={newLeads.thisWeek.toLocaleString(locale)}
               comparisons={[{ pct: newLeads.deltaPct, caption: vsPrevWindow(newLeads.lastWeek.toLocaleString(locale)) }]}
             />
             <StatTile
               icon="target" label={t.closeRate}
+              note={t.notes.closeRate}
               value={rate(periodConversion.winRate)}
               sublabel={
                 periodConversion.winRate === null
@@ -425,17 +433,20 @@ export function Dashboard(props: DashboardProps) {
               icon="fileText" label={t.openLeads}
               value={pipeline.open.toLocaleString(locale)}
               sublabel={pipelineNote ?? t.openLeadsSublabel}
+              note={t.notes.open}
               comparisons={vsPeriodStart("open")}
             />
             <StatTile
               icon="hourglass" label={t.noResponseLeads}
               value={pipeline.noResponse.toLocaleString(locale)}
               sublabel={pipelineNote ?? t.noResponseLeadsSublabel}
+              note={t.notes.noResponseStage}
               comparisons={vsPeriodStart("noResponse", false)}
               accent="warning"
             />
             <StatTile
               icon="clock" label={t.avgReplyTime}
+              note={t.notes.avgReply}
               value={formatMinutes(responseTime.avgMinutes)}
               sublabel={responseTime.repliedCount > 0 ? t.overLeadsReplied(responseTime.repliedCount) : t.notEnoughData}
               accent="good"
@@ -446,11 +457,11 @@ export function Dashboard(props: DashboardProps) {
         <section>
           <SectionLabel>{t.leadAcquisition}</SectionLabel>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <BarChart title={t.leadsBySourceCampaign} data={bySource} labels={chartLabels} />
-            <LineChart title={t.newLeadsPerDay} data={overTime} locale={locale} hoverLabelPrefix={t.leadsOnPrefix} />
+            <BarChart title={t.leadsBySourceCampaign} data={bySource} labels={chartLabels} note={t.notes.bySource} />
+            <LineChart title={t.newLeadsPerDay} data={overTime} locale={locale} hoverLabelPrefix={t.leadsOnPrefix} note={t.notes.perDay} />
           </div>
           <div className="grid grid-cols-1 mt-4">
-            <BarChart title={t.leadsByCity} data={byCity} labels={chartLabels} />
+            <BarChart title={t.leadsByCity} data={byCity} labels={chartLabels} note={t.notes.byCity} />
           </div>
         </section>
 
@@ -462,11 +473,13 @@ export function Dashboard(props: DashboardProps) {
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 mb-4">
             <BarChart
               title={t.opportunitiesByStage}
+              note={t.notes.byStage}
               data={byStage.map((s) => ({ label: s.label, value: s.value }))}
               labels={chartLabels}
             />
             <StatTile
               icon="pause" label={t.stalledLeads}
+              note={t.notes.stalled}
               value={stalled.stalledCount.toLocaleString(locale)}
               sublabel={t.stalledSublabel(stalled.openCount, stalled.thresholdDays)}
               comparisons={stalled.byStage.map((s) => ({ pct: null, caption: `${s.label}: ${s.value.toLocaleString(locale)}` }))}
@@ -474,7 +487,7 @@ export function Dashboard(props: DashboardProps) {
               accent={stalled.stalledCount > 0 ? "warning" : "good"}
             />
           </div>
-          <BarChart title={t.opportunitiesByProductLine} data={byPipeline} labels={chartLabels} />
+          <BarChart title={t.opportunitiesByProductLine} data={byPipeline} labels={chartLabels} note={t.notes.byLine} />
           <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
             {t.lithiumFootnote}
           </p>
@@ -482,6 +495,7 @@ export function Dashboard(props: DashboardProps) {
 
         <section>
           <SectionLabel>{t.responseSpeed}</SectionLabel>
+          <InfoNote className="-mt-2 mb-3">{t.notes.responseSpeed}</InfoNote>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatTile
               icon="zap" label={t.responseUnder5min}
@@ -508,6 +522,7 @@ export function Dashboard(props: DashboardProps) {
         <SourceGroup title={t.metaGroupTitle} subtitle={t.metaGroupSubtitle} accent="#9333ea">
           <section>
             <SectionLabel>{t.advertisingMetaAds}</SectionLabel>
+            <InfoNote className="-mt-2 mb-3">{t.notes.meta}</InfoNote>
             {!meta.configured ? (
               <div
                 className="rounded-2xl p-5 text-sm"

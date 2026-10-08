@@ -2,6 +2,56 @@
 // main dictionary by getDict().
 
 const es = {
+  notes: {
+    tags: "Las etiquetas son las que tiene cada lead hoy en GHL.",
+    inConversation:
+      "Leads con oportunidad en Contactado, Cotización enviada o En negociación. Es el estado actual (en un mes pasado, el de su cierre); se compara con cómo estaba el pipeline al cierre del periodo anterior.",
+    newLeads:
+      "Todos los contactos nuevos en GHL, también los que escribieron por WhatsApp y aún no tienen oportunidad. No cuenta importaciones masivas (20 o más contactos creados en ráfaga).",
+    closeRate:
+      "Ganadas ÷ (ganadas + perdidas) que se cerraron en el periodo, sin importar cuándo llegó el lead. \"Sin respuesta\" sigue abierto. Hasta septiembre de 2026 las fechas son de cuando se registró en GHL, no de cuando pasó.",
+    open: "Todo lo que no está en Ganado ni Perdido: incluye Sin respuesta y Más adelante.",
+    noResponseStage:
+      "Leads que el equipo movió a la etapa \"Sin respuesta\" del pipeline. No es lo mismo que los leads sin mensaje de la sección Velocidad de respuesta.",
+    avgReply:
+      "Del momento en que llega el lead al primer mensaje que le manda una persona (no automático) desde GHL o el WhatsApp conectado. Solo leads desde el 28 sep 2026; lo que se conteste por fuera de GHL no se ve.",
+    responseSpeed:
+      "Solo leads con más de 24 h de haber llegado, desde el 28 sep 2026. Un lead contestado por fuera de GHL (celular personal, llamada normal) cuenta como sin respuesta.",
+    bySource: "La fuente que guarda GHL. Quien escribe directo por WhatsApp aparece como Desconocido.",
+    byCity: "La ciudad que el lead escribió en el formulario; si no la dio, aparece como Sin ciudad.",
+    perDay: "Contactos nuevos por día (hora de Hermosillo) del periodo actual y del anterior.",
+    byStage: "Todas las oportunidades según su etapa actual.",
+    byLine: "Oportunidades según su pipeline (Golf o Marinas).",
+    stalled:
+      "Leads abiertos fuera de Cotización enviada con 14 o más días en la misma etapa. Se ignoran los movimientos de ida y vuelta de menos de 10 minutos.",
+    meta: "Datos que reporta Meta para las fechas del periodo. Sus \"leads\" son formularios enviados según Meta y pueden no coincidir con los que llegan al CRM.",
+    metaCpl:
+      "Inversión ÷ leads que reporta Meta. El costo por lead de la pestaña Dinero divide entre los leads que sí llegaron al CRM, por eso es distinto.",
+    invested: "Lo que Meta gastó en el periodo en las campañas que traen leads al CRM.",
+    revenueWon:
+      "Monto de las oportunidades que pasaron a Ganado en el periodo, aunque el lead haya llegado antes. Se usa el monto actual en GHL.",
+    roas: "Ventas ganadas ÷ inversión del mismo periodo.",
+    quotedOpen: "Monto de las cotizaciones que seguían abiertas al final del periodo, con el monto actual de GHL.",
+    cpl: "Inversión ÷ leads de anuncios que llegaron al CRM en el periodo. Es distinto al de Meta, que divide entre los leads que reporta Meta.",
+    costPerQuote: "Inversión ÷ leads que llegaron por primera vez a Cotización enviada (o más adelante) en el periodo.",
+    cac: "Inversión ÷ ventas ganadas en el periodo.",
+    avgQuote: "Promedio del monto de las cotizaciones del periodo que tienen monto en GHL.",
+    wasted:
+      "Costo estimado de los leads que pasaron a Perdido, Descalificado o Sin respuesta en el periodo. El costo de cada lead es lo que gastó su campaña ÷ los leads de esa campaña.",
+    atRisk: "Cotizaciones abiertas al final del periodo con 14 o más días sin cambiar de etapa.",
+    lostValue: "Suele salir bajo: GHL casi nunca guarda monto en los leads perdidos.",
+    whereSpendGoes: "Los leads que llegaron en el periodo, según la etapa en que estaban al final.",
+    activity: "Cada paso cuenta lo que pasó en esas fechas; no son los mismos leads avanzando de un paso al otro.",
+    funnel: "Todos los leads desde el inicio, según hasta dónde han llegado.",
+    valueByStage: "Monto actual de cada oportunidad, según la etapa en que estaba al final del periodo.",
+    lineTable: "Cada línea con sus propias campañas de Meta. Las ventas y cotizaciones cuentan lo que pasó en el periodo.",
+    byAd: "La inversión es la de Meta en el periodo; el costo por lead divide entre los leads de ese anuncio que llegaron al CRM.",
+    batteries: "Respuesta libre del formulario: solo se suman las que son un número claro (\"6\", \"seis baterías\").",
+    leadsList: "Con Semana o Mes se ven los leads que llegaron o cambiaron de etapa en esas fechas.",
+    leadsQuoted: "Monto de los leads de la lista que se cotizaron en el periodo.",
+    leadsSold: "Ventas cerradas en el periodo de los leads de la lista.",
+    leadsCost: "Costo estimado de los leads de la lista que llegaron en el periodo (gasto de su campaña ÷ sus leads).",
+  },
   navSummary: "Resumen",
   navMoney: "Dinero",
   navLeads: "Leads",
@@ -177,6 +227,53 @@ const es = {
 type ExtraDict = typeof es;
 
 const en: ExtraDict = {
+  notes: {
+    tags: "Tags are the ones each lead has in GHL today.",
+    inConversation:
+      "Leads with an opportunity in Contacted, Quote sent or Negotiating. It's the current state (for a past month, its closing state), compared with the pipeline at the close of the previous period.",
+    newLeads:
+      "Every new contact in GHL, including people who wrote on WhatsApp and don't have an opportunity yet. Bulk imports (20+ contacts created in a burst) don't count.",
+    closeRate:
+      "Won ÷ (won + lost) closed in the period, whenever the lead arrived. \"No response\" is still open. Until September 2026, dates are when things were recorded in GHL, not when they happened.",
+    open: "Everything not in Won or Lost, including No response and Later.",
+    noResponseStage:
+      "Leads the team moved to the \"No response\" stage. Not the same as the leads without a message in the Response speed section.",
+    avgReply:
+      "From the moment a lead arrives to the first message a person (not an automation) sends from GHL or the connected WhatsApp. Only leads since Sep 28, 2026; replies sent outside GHL aren't visible.",
+    responseSpeed:
+      "Only leads older than 24 h, since Sep 28, 2026. A lead answered outside GHL (personal phone, regular call) counts as unanswered.",
+    bySource: "The source GHL stores. People who write straight to WhatsApp show as Unknown.",
+    byCity: "The city the lead typed in the form; if none, it shows as No city.",
+    perDay: "New contacts per day (Hermosillo time) for this period and the previous one.",
+    byStage: "Every opportunity by its current stage.",
+    byLine: "Opportunities by pipeline (Golf or Marine).",
+    stalled: "Open leads outside Quote sent with 14+ days in the same stage. Round-trip moves undone within 10 minutes are ignored.",
+    meta: "Data Meta reports for the period's dates. Its \"leads\" are forms submitted according to Meta and may not match the ones that reach the CRM.",
+    metaCpl: "Spend ÷ leads Meta reports. The Money tab's cost per lead divides by the leads that actually reached the CRM, so it differs.",
+    invested: "What Meta spent in the period on the campaigns that bring leads to the CRM.",
+    revenueWon: "Amount of the opportunities that moved to Won in the period, even if the lead arrived earlier. Uses the current amount in GHL.",
+    roas: "Revenue won ÷ spend in the same period.",
+    quotedOpen: "Amount of the quotes still open at the end of the period, at their current GHL amount.",
+    cpl: "Spend ÷ ad leads that reached the CRM in the period. Differs from Meta's, which divides by the leads Meta reports.",
+    costPerQuote: "Spend ÷ leads that first reached Quote sent (or beyond) in the period.",
+    cac: "Spend ÷ deals won in the period.",
+    avgQuote: "Average amount of the period's quotes that have an amount in GHL.",
+    wasted:
+      "Estimated cost of the leads that moved to Lost, Disqualified or No response in the period. Each lead's cost is its campaign's spend ÷ that campaign's leads.",
+    atRisk: "Quotes open at the end of the period with 14+ days without changing stage.",
+    lostValue: "Usually low: GHL rarely stores an amount on lost leads.",
+    whereSpendGoes: "Leads that arrived in the period, by the stage they were in at its end.",
+    activity: "Each step counts what happened on those dates; they aren't the same leads moving from one step to the next.",
+    funnel: "Every lead since the start, by how far it has gone.",
+    valueByStage: "Current amount of each opportunity, by the stage it was in at the end of the period.",
+    lineTable: "Each line with its own Meta campaigns. Sales and quotes count what happened in the period.",
+    byAd: "Spend is Meta's for the period; cost per lead divides by that ad's leads that reached the CRM.",
+    batteries: "Free-text form answer: only clear numbers are added up (\"6\", \"six batteries\").",
+    leadsList: "With Week or Month you see the leads that arrived or changed stage on those dates.",
+    leadsQuoted: "Amount of the listed leads quoted in the period.",
+    leadsSold: "Deals closed in the period among the listed leads.",
+    leadsCost: "Estimated cost of the listed leads that arrived in the period (their campaign's spend ÷ its leads).",
+  },
   navSummary: "Overview",
   navMoney: "Money",
   navLeads: "Leads",

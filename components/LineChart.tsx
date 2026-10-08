@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoNote } from "@/components/InfoNote";
 
 export type LineDatum = { date: string; value: number };
 
@@ -22,11 +23,13 @@ export function LineChart({
   data,
   locale = "es-MX",
   hoverLabelPrefix = "leads el",
+  note,
 }: {
   title: string;
   data: LineDatum[];
   locale?: string;
   hoverLabelPrefix?: string;
+  note?: string;
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -66,9 +69,10 @@ export function LineChart({
       className="viz-root rounded-2xl p-5 sm:p-6"
       style={{ background: "var(--surface-1)", border: "1px solid var(--border-hairline)", boxShadow: "var(--card-shadow)" }}
     >
-      <h3 className="text-sm font-medium mb-4" style={{ color: "var(--text-primary)" }}>
+      <h3 className={`text-sm font-medium ${note ? "mb-1" : "mb-4"}`} style={{ color: "var(--text-primary)" }}>
         {title}
       </h3>
+      {note && <InfoNote className="mb-4">{note}</InfoNote>}
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="w-full"

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { InfoNote } from "@/components/InfoNote";
 
-export function Panel({ title, subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) {
+export function Panel({ title, subtitle, note, children }: { title?: string; subtitle?: string; note?: string; children: ReactNode }) {
   return (
     <div
       className="rounded-2xl p-5 sm:p-6 overflow-x-auto"
@@ -16,7 +17,8 @@ export function Panel({ title, subtitle, children }: { title?: string; subtitle?
           {subtitle}
         </p>
       )}
-      <div className={title || subtitle ? "mt-4" : undefined}>{children}</div>
+      {note && <InfoNote className="mt-2">{note}</InfoNote>}
+      <div className={title || subtitle || note ? "mt-4" : undefined}>{children}</div>
     </div>
   );
 }

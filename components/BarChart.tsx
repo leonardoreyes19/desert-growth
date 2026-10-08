@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { InfoNote } from "@/components/InfoNote";
 
 export type BarDatum = { label: string; value: number };
 
@@ -10,12 +11,14 @@ export function BarChart({
   formatValue = (n: number) => n.toLocaleString("es-MX"),
   valueSuffix,
   labels = { viewTable: "Ver tabla", viewChart: "Ver gráfica", category: "Categoría", value: "Valor", empty: "Sin datos en este periodo" },
+  note,
 }: {
   title: string;
   data: BarDatum[];
   formatValue?: (n: number) => string;
   valueSuffix?: string;
   labels?: { viewTable: string; viewChart: string; category: string; value: string; empty: string };
+  note?: string;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -43,6 +46,7 @@ export function BarChart({
         </button>
         )}
       </div>
+      {note && <InfoNote className="-mt-2 mb-4">{note}</InfoNote>}
 
       {data.length === 0 ? (
         <p className="text-sm py-6 text-center" style={{ color: "var(--text-muted)" }}>
