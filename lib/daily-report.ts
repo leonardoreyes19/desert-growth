@@ -23,10 +23,11 @@ import { pipelineHistoryFor } from "./snapshots";
 import type { LeadRow } from "./leads";
 
 /**
- * The daily email (like Zoho's daily report): the month to date as of the end
- * of yesterday, plus what happened yesterday. On the 1st it's the month that
- * just closed, complete. Comparisons are against the previous month up to the
- * same day (or the whole previous month on the 1st).
+ * The daily email (like Zoho's daily report), sent Monday to Friday: the month
+ * to date as of the end of yesterday, plus what happened since the last report
+ * (yesterday; Friday to Sunday on Mondays). When a month has just ended it's
+ * that month, complete. Comparisons are against the previous month up to the
+ * same day (or the whole previous month once it has closed).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,6 +63,13 @@ export type DailyReportData = {
   prevMonthStartIso: string;
   /** The month just ended (sent on the 1st). */
   monthClosed: boolean;
+  /** Start of the "since the last report" window: yesterday, or Friday on Mondays. */
+  recentStartIso: string;
+  /** Days in that window (1, or 3 on Mondays). */
+  recentDays: number;
+  /** The window is exactly the day before the email goes out. */
+  recentIsYesterday: boolean;
+  /** What happened since the last report. */
   yesterday: { newLeads: number; quotes: number; quotedValue: number; sales: number; salesValue: number };
   month: {
     newLeads: WeekOverWeek;
@@ -111,10 +119,15 @@ function leadLine(r: LeadRow): LeadLine {
 
 export async function buildDailyReport(now = Date.now()): Promise<DailyReportData> {
   const locationId = requireLocationId();
-  const end = startOfDay(now);
-  const yesterdayStart = end - DAY_MS;
-  const monthStart = startOfMonth(yesterdayStart);
-  const prevStart = startOfMonth(yesterdayStart, 1);
+  const today = startOfDay(now);
+  // No emails on weekends, so Monday's covers Friday to Sunday.
+  const isMonday = new Date(today + 12 * 60 * 60 * 1000).getUTCDay() === 1;
+  const yesterdayStart = today - (isMonday ? 3 : 1) * DAY_MS;
+  // If a month ended over the weekend, Monday's email is that month's close (cut at the 1st).
+  const monthTurned = startOfMonth(today - 1) > yesterdayStart && startOfMonth(today - 1) < today;
+  const end = monthTurned ? startOfMonth(today - 1) : today;
+  const monthStart = startOfMonth(end - 1);
+  const prevStart = startOfMonth(end - 1, 1);
   const prevSamePoint = Math.min(prevStart + (end - monthStart), monthStart);
   const monthClosed = end === startOfMonth(end);
   const range: PeriodRange = {
@@ -196,7 +209,14 @@ export async function buildDailyReport(now = Date.now()): Promise<DailyReportDat
     if (!after) continue;
     const isNew = !before && /lead nuevo/i.test(after.stage);
     if (isNew || (before && before.stage === after.stage && before.outcome === after.outcome)) continue;
-    movesYesterday.push({ name: r.name, from: before?.stage ?? "Nuevo", to: after.stage, value: r.value, outcome: after.outcome });
+    // Marked won/lost without moving to the Ganado/Perdido stage: say so instead of "X → X".
+    const sameStage = before?.stage === after.stage;
+    const to =
+      sameStage && after.outcome === "lost" ? `${after.stage} (marcado como perdido)`
+      : sameStage && after.outcome === "won" ? `${after.stage} (marcado como ganado)`
+      : sameStage && before?.outcome !== "open" ? `${after.stage} (reabierto)`
+      : after.stage;
+    movesYesterday.push({ name: r.name, from: before?.stage ?? "Nuevo", to, value: r.value, outcome: after.outcome });
   }
   movesYesterday.sort((a, b) => (a.outcome === b.outcome ? b.value - a.value : a.outcome === "won" ? -1 : b.outcome === "won" ? 1 : 0));
 
@@ -220,10 +240,13 @@ export async function buildDailyReport(now = Date.now()): Promise<DailyReportDat
 
   return {
     cutIso: new Date(end).toISOString(),
-    cutDate: hermosilloDate(yesterdayStart),
+    cutDate: hermosilloDate(end - 1),
     monthStartIso: new Date(monthStart).toISOString(),
     prevMonthStartIso: new Date(prevStart).toISOString(),
     monthClosed,
+    recentStartIso: new Date(yesterdayStart).toISOString(),
+    recentDays: Math.round((end - yesterdayStart) / DAY_MS),
+    recentIsYesterday: yesterdayStart === today - DAY_MS && end === today,
     yesterday: {
       newLeads: contactsBetween(contacts, yesterdayStart, end).length,
       quotes: quotedYesterday.length,

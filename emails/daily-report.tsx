@@ -126,6 +126,10 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
   const dayOfMonth = Number(r.cutDate.slice(8, 10));
   const scope = r.monthClosed ? `Cierre de ${month}` : `${month[0].toUpperCase()}${month.slice(1)}, del 1 al ${dayOfMonth}`;
   const vsWhat = r.monthClosed ? `${prevMonth} completo` : `${prevMonth} al día ${dayOfMonth}`;
+  // "Ayer" Tuesday to Friday; on Mondays the window is Friday to Sunday.
+  const recentStart = dayLabel(r.recentStartIso, { weekday: "long", day: "numeric", month: "long" });
+  const recent = r.recentIsYesterday ? `ayer (${cutDay})` : r.recentDays === 1 ? `el ${cutDay}` : `del ${recentStart} al ${cutDay}`;
+  const recentTitle = recent[0].toUpperCase() + recent.slice(1);
   const m = r.month;
   const p = r.pipeline;
 
@@ -142,7 +146,7 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
               Datos al corte del {cutDay} · comparado con {vsWhat}
             </Text>
 
-            <Title>Ayer ({cutDay})</Title>
+            <Title>{recentTitle}</Title>
             <Grid
               cells={[
                 <Cell key="l" label="Leads nuevos" value={num(r.yesterday.newLeads)} />,
@@ -155,10 +159,12 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
               ]}
             />
 
-            <Title>Qué se movió ayer</Title>
+            <Title>Qué se movió {recent}</Title>
             {r.movesYesterday.length > 0 ? <MoveList moves={r.movesYesterday} /> : <Note>Ningún lead cambió de etapa.</Note>}
 
-            <Title>Leads que llegaron ayer ({num(r.arrivedYesterday.length)})</Title>
+            <Title>
+              Leads que llegaron {recent} ({num(r.arrivedYesterday.length)})
+            </Title>
             {r.arrivedYesterday.length > 0 ? (
               <LeadList
                 leads={r.arrivedYesterday}
@@ -347,6 +353,9 @@ DailyReport.PreviewProps = {
     monthStartIso: "2026-10-01T07:00:00.000Z",
     prevMonthStartIso: "2026-09-01T07:00:00.000Z",
     monthClosed: false,
+    recentStartIso: "2026-10-06T07:00:00.000Z",
+    recentDays: 1,
+    recentIsYesterday: true,
     yesterday: { newLeads: 2, quotes: 1, quotedValue: 18500, sales: 0, salesValue: 0 },
     month: {
       newLeads: { thisWeek: 6, lastWeek: 4, deltaPct: 0.5 },

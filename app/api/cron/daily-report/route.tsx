@@ -16,8 +16,9 @@ function isAuthorized(req: NextRequest): boolean {
 
 /**
  * Daily email with the month to date as of yesterday (the closed month on the
- * 1st). Vercel Cron calls it every morning; `?dry=1` returns the HTML instead
- * of sending, and `?test=1` sends a "[Prueba]" copy that doesn't count as the
+ * 1st). Vercel Cron calls it Monday to Friday mornings (Monday's covers the
+ * weekend); `?dry=1` returns the HTML instead
+ * of sending (add `&fecha=YYYY-MM-DD` to preview another morning), and `?test=1` sends a "[Prueba]" copy that doesn't count as the
  * day's email. REPORT_RECIPIENTS is a comma-separated list.
  */
 export async function GET(req: NextRequest) {
@@ -25,11 +26,15 @@ export async function GET(req: NextRequest) {
 
   const companyName = process.env.REPORT_COMPANY_NAME || "Reporte de crecimiento";
   const dashboardBase = process.env.REPORT_DASHBOARD_URL || "https://dashboard.malpa.com.mx";
-  const report = await buildDailyReport();
+  // ?fecha=YYYY-MM-DD previews the email as it would go out that morning (dry runs only).
+  const fecha = req.nextUrl.searchParams.get("fecha");
+  const dry = req.nextUrl.searchParams.get("dry") === "1";
+  const at = dry && fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? Date.parse(`${fecha}T07:30:00-07:00`) : undefined;
+  const report = await buildDailyReport(at);
   const dashboardUrl = `${dashboardBase}/?mes=${report.cutDate.slice(0, 7)}`;
   const html = await render(<DailyReport companyName={companyName} dashboardUrl={dashboardUrl} report={report} />);
 
-  if (req.nextUrl.searchParams.get("dry") === "1") {
+  if (dry) {
     return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
 
