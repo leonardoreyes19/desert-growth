@@ -17,13 +17,15 @@ const num = (n: number) => n.toLocaleString("es-MX");
 const pct = (n: number | null) => (n === null ? "—" : `${Math.round(n * 100)}%`);
 const dayLabel = (iso: string, opts: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleDateString("es-MX", { timeZone: TZ, ...opts });
 
-/** "▲ 33% vs. 3" style comparison; `higherIsBetter` decides the colour (null = neutral, e.g. spend). */
+/** "▲ 33% vs. 3 del 1 al 6 de septiembre" style comparison; `against` names the period the previous value is from, so no
+ *  number is left ambiguous. `higherIsBetter` decides the colour (null = neutral, e.g. spend). */
 function Delta({
   value,
   previous,
   format,
+  against,
   higherIsBetter = true,
-}: Compared & { format: (n: number) => string; higherIsBetter?: boolean | null }) {
+}: Compared & { format: (n: number) => string; against: string; higherIsBetter?: boolean | null }) {
   if (previous === null) return null;
   const change = previous > 0 ? (value - previous) / previous : null;
   const up = value > previous;
@@ -31,7 +33,9 @@ function Delta({
   return (
     <span style={{ color }}>
       {change === null ? "" : `${up ? "▲" : value < previous ? "▼" : "="} ${Math.abs(Math.round(change * 100))}% `}
-      <span style={{ color: MUTED }}>vs. {format(previous)}</span>
+      <span style={{ color: MUTED }}>
+        vs. {format(previous)} {against}
+      </span>
     </span>
   );
 }
@@ -126,6 +130,9 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
   const dayOfMonth = Number(r.cutDate.slice(8, 10));
   const scope = r.monthClosed ? `Cierre de ${month}` : `${month[0].toUpperCase()}${month.slice(1)}, del 1 al ${dayOfMonth}`;
   const vsWhat = r.monthClosed ? `${prevMonth} completo` : `${prevMonth} al día ${dayOfMonth}`;
+  // Spelled out next to every compared number: month totals vs. the same days of last month, pipeline vs. its close.
+  const vsMonth = r.monthClosed ? `en todo ${prevMonth}` : `del 1 al ${dayOfMonth} de ${prevMonth}`;
+  const vsClose = `al cierre de ${prevMonth}`;
   // "Ayer" Tuesday to Friday; on Mondays the window is Friday to Sunday.
   const recentStart = dayLabel(r.recentStartIso, { weekday: "long", day: "numeric", month: "long" });
   const recent = r.recentIsYesterday ? `ayer (${cutDay})` : r.recentDays === 1 ? `el ${cutDay}` : `del ${recentStart} al ${cutDay}`;
@@ -252,13 +259,13 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
             <Grid
               cells={[
                 <Cell key="l" label="Leads nuevos" value={num(m.newLeads.thisWeek)}>
-                  <Delta value={m.newLeads.thisWeek} previous={m.newLeads.lastWeek} format={num} />
+                  <Delta value={m.newLeads.thisWeek} previous={m.newLeads.lastWeek} format={num} against={vsMonth} />
                 </Cell>,
                 <Cell key="q" label="Cotizaciones enviadas" value={num(m.quotes.value)}>
-                  {money(m.quotedValue)} · <Delta {...m.quotes} format={num} />
+                  {money(m.quotedValue)} · <Delta {...m.quotes} format={num} against={vsMonth} />
                 </Cell>,
                 <Cell key="s" label="Ventas cerradas" value={money(m.salesValue.value)}>
-                  {num(m.sales.value)} ventas · <Delta {...m.salesValue} format={money} />
+                  {num(m.sales.value)} ventas · <Delta {...m.salesValue} format={money} against={vsMonth} />
                 </Cell>,
                 <Cell key="c" label="Tasa de cierre" value={pct(m.closeRate)}>
                   ganadas ÷ (ganadas + perdidas) en el mes
@@ -270,7 +277,7 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
             <Grid
               cells={[
                 <Cell key="i" label="Inversión" value={money(m.spend.value)}>
-                  <Delta {...m.spend} format={money} higherIsBetter={null} />
+                  <Delta {...m.spend} format={money} against={vsMonth} higherIsBetter={null} />
                 </Cell>,
                 <Cell key="r" label="Retorno (ROAS)" value={m.roas === null ? "—" : `${m.roas.toFixed(1)}x`}>
                   ventas del mes ÷ inversión del mes
@@ -287,20 +294,19 @@ export default function DailyReport({ companyName, dashboardUrl, report: r }: Da
             <Grid
               cells={[
                 <Cell key="c" label="En conversación" value={num(p.now.inConversation)}>
-                  {p.prevMonthClose && <Delta value={p.now.inConversation} previous={p.prevMonthClose.inConversation} format={num} />}
+                  {p.prevMonthClose && <Delta value={p.now.inConversation} previous={p.prevMonthClose.inConversation} format={num} against={vsClose} />}
                 </Cell>,
                 <Cell key="o" label="Abiertos" value={num(p.now.open)}>
-                  {p.prevMonthClose && <Delta value={p.now.open} previous={p.prevMonthClose.open} format={num} />}
+                  {p.prevMonthClose && <Delta value={p.now.open} previous={p.prevMonthClose.open} format={num} against={vsClose} />}
                 </Cell>,
                 <Cell key="n" label="Sin respuesta" value={num(p.now.noResponse)}>
-                  {p.prevMonthClose && <Delta value={p.now.noResponse} previous={p.prevMonthClose.noResponse} format={num} higherIsBetter={false} />}
+                  {p.prevMonthClose && <Delta value={p.now.noResponse} previous={p.prevMonthClose.noResponse} format={num} against={vsClose} higherIsBetter={false} />}
                 </Cell>,
                 <Cell key="e" label="Estancados" value={num(p.stalled)}>
                   abiertos sin cotización, 14+ días sin moverse
                 </Cell>,
               ]}
             />
-            {p.prevMonthClose && <Text style={{ fontSize: 11, color: MUTED, margin: "2px 0 0" }}>Comparado con el cierre de {prevMonth}.</Text>}
 
             <Title>Respuesta a leads del mes</Title>
             <Grid
