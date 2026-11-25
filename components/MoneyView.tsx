@@ -50,7 +50,7 @@ export function MoneyView(props: MoneyViewProps) {
   const wastedShare = tot.spend > 0 ? tot.wastedSpend / tot.spend : null;
   const chartLabels = { viewTable: t.viewTable, viewChart: t.viewChart, category: t.category, value: t.value, empty: t.noDataInPeriod };
 
-  const lines = (["golf", "marine", "other"] as ProductLine[]).filter((l) => finance.byLine[l]);
+  const lines = (["golf", "marine", "peak", "other"] as ProductLine[]).filter((l) => finance.byLine[l]);
   const lineRows: { label: string; get: (l: LineFinance) => string }[] = [
     { label: t.invested, get: (l) => money(l.spend) },
     { label: t.leadsCountCol, get: (l) => count(l.leads) },

@@ -198,7 +198,7 @@ export function financeSummary(
   const spendByCampaign = new Map<string, number>();
   for (const a of adSpend) spendByCampaign.set(a.campaignId, (spendByCampaign.get(a.campaignId) ?? 0) + a.spend);
 
-  const lines: ProductLine[] = ["golf", "marine", "other"];
+  const lines: ProductLine[] = ["golf", "marine", "peak", "other"];
   const byLine: Partial<Record<ProductLine, LineFinance>> = {};
   for (const line of lines) {
     const lineActivity = filterActivity(all, (r) => r.line === line);

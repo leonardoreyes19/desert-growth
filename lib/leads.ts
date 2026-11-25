@@ -4,7 +4,7 @@ import { firstHumanReplyByContact } from "./metrics";
 import type { OppEvent, OppEventLog } from "./opportunity-events";
 import { answeredAt, closedAt, quotedAt, stateAt, withoutBounces } from "./opportunity-state";
 
-export type ProductLine = "golf" | "marine" | "other";
+export type ProductLine = "golf" | "marine" | "peak" | "other";
 
 export type StageBucket =
   | "new"
@@ -141,6 +141,7 @@ function lineForPipeline(name: string | null): ProductLine {
   if (!name) return "other";
   if (/golf|carrit/i.test(name)) return "golf";
   if (/marin|náutic|nautic/i.test(name)) return "marine";
+  if (/peak/i.test(name)) return "peak";
   return "other";
 }
 

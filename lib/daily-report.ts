@@ -97,7 +97,7 @@ export type DailyReportData = {
   metaError: string | null;
 };
 
-const LINE_LABEL: Record<string, string> = { golf: "Golf", marine: "Marinas", other: "Otra" };
+const LINE_LABEL: Record<string, string> = { golf: "Golf", marine: "Marinas", peak: "PEAK", other: "Otra" };
 const TRACKING_SINCE = Date.parse(RESPONSE_TRACKING_SINCE);
 const RECENT_MS = 30 * DAY_MS;
 const isTestContact = (r: LeadRow) => /prueba|test/i.test(r.name) || /@malpa\.com\.mx$/i.test(r.email ?? "");
